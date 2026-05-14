@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZEXL med — Audit Readiness for FDA QMSR / ISO 13485</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0a1628;
+  --navy-mid:#112240;
+  --navy-light:#1e3a5f;
+  --steel:#2a4a6b;
+  --accent:#2eb89a;
+  --accent-dim:#25967e;
+  --accent-glow:rgba(46,184,154,0.10);
+  --text-primary:#e8edf2;
+  --text-secondary:#8a9bb0;
+  --text-muted:#5a6e82;
+  --border:#1e3a5f;
+  --border-accent:rgba(46,184,154,0.28);
+  --card-bg:#0f1f35;
+  --serif:'DM Serif Display',Georgia,serif;
+  --mono:'DM Mono',monospace;
+  --sans:'Instrument Sans',sans-serif;
+}
+html{scroll-behavior:smooth}
+body{background:var(--navy);color:var(--text-primary);font-family:var(--sans);font-size:16px;line-height:1.6;min-height:100vh}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:1rem 3rem;background:rgba(10,22,40,0.92);backdrop-filter:blur(12px);border-bottom:1px solid rgba(30,58,95,0.5)}
+.nav-logo{font-family:var(--mono);font-size:1rem;font-weight:500;color:var(--accent);letter-spacing:0.05em}
+.nav-logo span{color:var(--text-secondary);font-weight:400}
+.nav-links{display:flex;align-items:center;gap:2rem}
+.nav-links a{color:var(--text-secondary);text-decoration:none;font-size:0.875rem;font-weight:500;letter-spacing:0.03em;transition:color 0.2s}
+.nav-links a:hover{color:var(--text-primary)}
+.nav-cta{background:transparent;border:1px solid var(--border-accent);color:var(--accent);padding:0.45rem 1.1rem;border-radius:4px;font-family:var(--sans);font-size:0.875rem;font-weight:600;cursor:pointer;letter-spacing:0.04em;transition:all 0.2s;text-decoration:none}
+.nav-cta:hover{background:var(--accent-glow)}
+
+.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:8rem 3rem 4rem;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:-200px;right:-200px;width:700px;height:700px;background:radial-gradient(circle,rgba(46,184,154,0.05) 0%,transparent 70%);pointer-events:none}
+.hero-eyebrow{font-family:var(--mono);font-size:0.72rem;font-weight:500;color:var(--accent);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:1.5rem}
+.status-pill{display:inline-flex;align-items:center;gap:0.4rem;font-family:var(--mono);font-size:0.7rem;color:var(--accent);letter-spacing:0.06em;margin-bottom:1.25rem}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 2.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.35}}
+.hero-title{font-family:var(--serif);font-size:clamp(2.4rem,4.5vw,3.75rem);line-height:1.1;color:var(--text-primary);max-width:820px;margin-bottom:1.5rem}
+.hero-title em{font-style:italic;color:var(--accent)}
+.hero-sub{font-size:1rem;color:var(--text-secondary);max-width:560px;line-height:1.8;margin-bottom:2.5rem}
+.hero-actions{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap}
+.btn-primary{background:var(--accent);color:var(--navy);padding:0.75rem 1.75rem;border-radius:4px;font-family:var(--sans);font-size:0.9rem;font-weight:600;cursor:pointer;border:none;letter-spacing:0.04em;transition:all 0.2s;text-decoration:none;display:inline-block}
+.btn-primary:hover{background:#35cead;transform:translateY(-1px)}
+.btn-secondary{background:transparent;border:1px solid var(--border);color:var(--text-secondary);padding:0.75rem 1.75rem;border-radius:4px;font-family:var(--sans);font-size:0.9rem;font-weight:500;cursor:pointer;letter-spacing:0.04em;transition:all 0.2s;text-decoration:none;display:inline-block}
+.btn-secondary:hover{border-color:var(--text-muted);color:var(--text-primary)}
+.hero-meta{margin-top:3.5rem;display:flex;gap:2.5rem;flex-wrap:wrap}
+.hero-meta-item{display:flex;flex-direction:column;gap:0.2rem}
+.hero-meta-label{font-family:var(--mono);font-size:0.68rem;color:var(--text-muted);letter-spacing:0.1em;text-transform:uppercase}
+.hero-meta-val{font-size:0.88rem;color:var(--text-secondary);font-weight:500}
+.hero-meta-val .hl{color:var(--accent)}
+
+.signal-strip{border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:1.25rem 3rem;display:flex;gap:2.5rem;flex-wrap:wrap;align-items:center;background:var(--card-bg)}
+.signal-item{display:flex;align-items:center;gap:0.6rem;font-size:0.82rem;color:var(--text-secondary)}
+.signal-dot{width:5px;height:5px;border-radius:50%;background:var(--accent);flex-shrink:0}
+
+section{padding:5rem 3rem}
+.section-label{font-family:var(--mono);font-size:0.68rem;font-weight:500;color:var(--accent);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:1rem}
+.section-title{font-family:var(--serif);font-size:clamp(1.7rem,3vw,2.4rem);line-height:1.2;color:var(--text-primary);max-width:600px;margin-bottom:1rem}
+.section-body{font-size:0.92rem;color:var(--text-secondary);max-width:560px;line-height:1.8;margin-bottom:3rem}
+
+.why-box{background:var(--card-bg);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:3px;padding:2rem 2.25rem;max-width:780px;margin-bottom:3rem}
+.why-box h3{font-family:var(--serif);font-size:1.25rem;color:var(--text-primary);margin-bottom:0.75rem}
+.why-box p{font-size:0.92rem;color:var(--text-secondary);line-height:1.8;margin-bottom:1.25rem}
+.why-box p:last-child{margin-bottom:0}
+.why-compare{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:1.5rem}
+.why-col h4{font-family:var(--mono);font-size:0.68rem;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.75rem}
+.why-col.bad h4{color:var(--text-muted)}
+.why-col.good h4{color:var(--accent)}
+.why-col ul{list-style:none;display:flex;flex-direction:column;gap:0.4rem}
+.why-col ul li{font-size:0.82rem;color:var(--text-secondary);padding-left:1rem;position:relative}
+.why-col ul li::before{position:absolute;left:0}
+.why-col.bad ul li::before{content:'—';color:var(--text-muted)}
+.why-col.good ul li::before{content:'✓';color:var(--accent)}
+
+.how-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1px;background:var(--border);border:1px solid var(--border)}
+.how-card{background:var(--navy);padding:2rem 1.75rem;position:relative}
+.how-num{font-family:var(--mono);font-size:0.68rem;color:var(--text-muted);letter-spacing:0.1em;margin-bottom:1rem}
+.how-title{font-size:0.92rem;font-weight:600;color:var(--text-primary);margin-bottom:0.5rem}
+.how-body{font-size:0.82rem;color:var(--text-secondary);line-height:1.65}
+.how-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:transparent;transition:background 0.3s}
+.how-card:hover::after{background:var(--accent)}
+
+.verdict-layout{display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:start}
+.verdict-list{display:flex;flex-direction:column;gap:1rem}
+.verdict-item{display:flex;align-items:flex-start;gap:1rem;padding:1rem 1.25rem;background:var(--card-bg);border:1px solid var(--border);border-radius:3px;transition:border-color 0.2s}
+.verdict-item:hover{border-color:var(--steel)}
+.verdict-badge{font-family:var(--mono);font-size:0.63rem;font-weight:500;letter-spacing:0.07em;padding:0.2rem 0.55rem;border-radius:2px;flex-shrink:0;margin-top:2px}
+.v-compliant{background:rgba(46,184,154,0.1);color:var(--accent);border:1px solid rgba(46,184,154,0.22)}
+.v-minor{background:rgba(210,160,20,0.1);color:#c49a18;border:1px solid rgba(210,160,20,0.2)}
+.v-not{background:rgba(230,100,60,0.1);color:#d46840;border:1px solid rgba(230,100,60,0.2)}
+.v-critical{background:rgba(210,50,50,0.1);color:#cc4444;border:1px solid rgba(210,50,50,0.2)}
+.verdict-desc{font-size:0.83rem;color:var(--text-secondary);line-height:1.6}
+.verdict-desc strong{color:var(--text-primary);font-weight:500}
+.output-panel{background:var(--card-bg);border:1px solid var(--border);border-radius:3px;padding:1.5rem;font-family:var(--mono);font-size:0.78rem;color:var(--text-secondary)}
+.output-panel .line{display:flex;gap:0.75rem;margin-bottom:0.45rem;line-height:1.5}
+.output-panel .key{color:var(--text-muted);flex-shrink:0}
+.output-panel .val.accent{color:var(--accent)}
+.output-panel .val.warn{color:#c49a18}
+.output-panel .val.danger{color:#cc4444}
+.output-panel .divider{border:none;border-top:1px solid var(--border);margin:0.7rem 0}
+.output-label{font-family:var(--mono);font-size:0.63rem;color:var(--text-muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.75rem}
+
+.access-section{background:var(--card-bg);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.access-inner{display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:center}
+.access-form{background:var(--navy);border:1px solid var(--border);border-radius:3px;padding:2rem}
+.form-title{font-size:0.95rem;font-weight:600;color:var(--text-primary);margin-bottom:0.35rem}
+.form-sub{font-size:0.8rem;color:var(--text-muted);margin-bottom:1.5rem;line-height:1.6}
+.field{margin-bottom:1rem}
+.field label{display:block;font-size:0.72rem;font-weight:500;color:var(--text-secondary);margin-bottom:0.4rem;letter-spacing:0.04em}
+.field input{width:100%;background:var(--card-bg);border:1px solid var(--border);border-radius:2px;padding:0.55rem 0.75rem;font-family:var(--mono);font-size:0.82rem;color:var(--text-primary);outline:none;transition:border-color 0.2s}
+.field input:focus{border-color:var(--border-accent)}
+.field input::placeholder{color:var(--text-muted)}
+.btn-form{width:100%;background:var(--accent);color:var(--navy);padding:0.65rem;border:none;border-radius:2px;font-family:var(--sans);font-size:0.875rem;font-weight:600;cursor:pointer;letter-spacing:0.04em;transition:background 0.2s;margin-top:0.25rem}
+.btn-form:hover{background:#35cead}
+.form-note{font-size:0.73rem;color:var(--text-muted);margin-top:0.75rem;line-height:1.55}
+.access-badges{display:flex;flex-direction:column;gap:0.6rem;margin-top:1.5rem}
+.access-badge{display:flex;align-items:center;gap:0.65rem;font-size:0.83rem;color:var(--text-secondary)}
+.access-badge::before{content:'✓';font-family:var(--mono);color:var(--accent);font-size:0.78rem;font-weight:500}
+
+.partnership-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.5rem;margin-top:2.5rem}
+.partner-card{background:var(--card-bg);border:1px solid var(--border);border-radius:3px;padding:1.75rem;transition:border-color 0.2s}
+.partner-card:hover{border-color:var(--steel)}
+.partner-card h4{font-size:0.88rem;font-weight:600;color:var(--text-primary);margin-bottom:0.5rem}
+.partner-card p{font-size:0.8rem;color:var(--text-secondary);line-height:1.65}
+.partner-tag{font-family:var(--mono);font-size:0.63rem;color:var(--accent);letter-spacing:0.08em;margin-bottom:0.75rem}
+
+footer{padding:2.5rem 3rem;border-top:1px solid var(--border)}
+.footer-top{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1.5rem;margin-bottom:1.75rem;padding-bottom:1.75rem;border-bottom:1px solid var(--border)}
+.footer-logo{font-family:var(--mono);font-size:0.9rem;color:var(--text-muted)}
+.footer-logo span{color:var(--accent)}
+.footer-tagline{font-size:0.82rem;color:var(--text-muted);margin-top:0.35rem}
+.footer-trust{display:flex;flex-wrap:wrap;gap:0.75rem 1.75rem}
+.trust-item{font-size:0.75rem;color:var(--text-muted);font-family:var(--mono);display:flex;align-items:center;gap:0.4rem}
+.trust-item::before{content:'·';color:var(--text-muted)}
+.footer-bottom{font-size:0.72rem;color:var(--text-muted);line-height:1.6;max-width:700px}
+
+#toast{position:fixed;bottom:2rem;right:2rem;background:var(--accent);color:var(--navy);padding:0.75rem 1.25rem;border-radius:4px;font-family:var(--mono);font-size:0.78rem;font-weight:500;opacity:0;transform:translateY(8px);transition:all 0.3s;pointer-events:none;z-index:200}
+#toast.show{opacity:1;transform:translateY(0)}
+
+@media(max-width:768px){
+  nav{padding:1rem 1.5rem}
+  .hero,.access-section,section,footer{padding-left:1.5rem;padding-right:1.5rem}
+  .signal-strip{padding:1rem 1.5rem}
+  .verdict-layout,.access-inner,.why-compare{grid-template-columns:1fr}
+  .nav-links{display:none}
+  .footer-top{flex-direction:column}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">ZEXL<span>med</span></div>
+  <div class="nav-links">
+    <a href="#why">Why deterministic</a>
+    <a href="#how">How it works</a>
+    <a href="#verdicts">Verdicts</a>
+    <a href="#access">Sandbox access</a>
+    <a href="#partner">Partnership</a>
+  </div>
+  <a href="#access" class="nav-cta">Request Access</a>
+</nav>
+
+<section class="hero">
+  <div class="status-pill"><span class="status-dot"></span>Closed Beta — Audit Sandbox Active</div>
+  <div class="hero-eyebrow">FDA QMSR · ISO 13485:2016 · Medical Device Quality Systems</div>
+  <h1 class="hero-title">Deterministic Audit Readiness<br>for <em>FDA QMSR</em> and ISO 13485</h1>
+  <p class="hero-sub">Explore how FDA 483 and ISO 13485 audit-readiness problems surface — evidence mapping, gap detection, CAPA linkage analysis, and clause-level finding generation.</p>
+  <div class="hero-actions">
+    <a href="#access" class="btn-primary">Explore Audit Readiness Sandbox</a>
+    <a href="#partner" class="btn-secondary">Workflow Integration &amp; Partnership</a>
+  </div>
+  <div class="hero-meta">
+    <div class="hero-meta-item">
+      <span class="hero-meta-label">Standards</span>
+      <span class="hero-meta-val"><span class="hl">FDA QMSR</span> + ISO 13485</span>
+    </div>
+    <div class="hero-meta-item">
+      <span class="hero-meta-label">Verdict levels</span>
+      <span class="hero-meta-val"><span class="hl">4</span> deterministic outputs</span>
+    </div>
+    <div class="hero-meta-item">
+      <span class="hero-meta-label">Clause coverage</span>
+      <span class="hero-meta-val"><span class="hl">13/21</span> active clauses</span>
+    </div>
+    <div class="hero-meta-item">
+      <span class="hero-meta-label">Market</span>
+      <span class="hero-meta-val">US Medical Device</span>
+    </div>
+  </div>
+</section>
+
+<div class="signal-strip">
+  <div class="signal-item"><span class="signal-dot"></span>FDA QMSR-oriented analysis</div>
+  <div class="signal-item"><span class="signal-dot"></span>Evidence-based gap detection</div>
+  <div class="signal-item"><span class="signal-dot"></span>Deterministic evaluation logic</div>
+  <div class="signal-item"><span class="signal-dot"></span>CAPA linkage analysis</div>
+  <div class="signal-item"><span class="signal-dot"></span>Clause-level finding mapping</div>
+  <div class="signal-item"><span class="signal-dot"></span>Synthetic audit scenarios</div>
+</div>
+
+<section id="why">
+  <div class="section-label">Why deterministic</div>
+  <h2 class="section-title">Traceable outputs for audit-sensitive workflows</h2>
+  <div class="why-box">
+    <h3>Why deterministic workflows matter</h3>
+    <p>Audit preparation workflows require traceable and reviewable outputs — not opaque autonomous generation.</p>
+    <p>Most AI-based compliance tools produce probabilistic outputs without explicit evidence linkage. For QMS audit preparation, that creates unacceptable review burden and traceability gaps.</p>
+    <div class="why-compare">
+      <div class="why-col bad">
+        <h4>Probabilistic / opaque systems</h4>
+        <ul>
+          <li>Confidence scores without evidence basis</li>
+          <li>Hallucination risk in finding generation</li>
+          <li>Uncontrolled output variation</li>
+          <li>Cannot trace finding to source signal</li>
+        </ul>
+      </div>
+      <div class="why-col good">
+        <h4>ZEXL med approach</h4>
+        <ul>
+          <li>Every verdict linked to extracted evidence</li>
+          <li>Deterministic — same input, same output</li>
+          <li>Explicit clause mapping per finding</li>
+          <li>Designed for human review workflow</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how" style="background:var(--card-bg);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+  <div class="section-label">How it works</div>
+  <h2 class="section-title">From document to structured finding</h2>
+  <p class="section-body">Submit a QMS document. The system performs structured evidence intake, clause-aligned evaluation, and generates a traceable finding for human review.</p>
+  <div class="how-grid">
+    <div class="how-card">
+      <div class="how-num">01 — INTAKE</div>
+      <div class="how-title">Structured evidence intake</div>
+      <div class="how-body">Document type classification routes clause applicability logic. CAPA Record, Audit Record, Preventive Action, Supplier Record — each follows a distinct evaluation path.</div>
+    </div>
+    <div class="how-card">
+      <div class="how-num">02 — EVALUATE</div>
+      <div class="how-title">Clause-aligned evaluation</div>
+      <div class="how-body">Clause-relevant signals extracted — root cause investigation, effectiveness verification, scope statements, CRQ references — mapped to applicable ISO / QMSR requirements.</div>
+    </div>
+    <div class="how-card">
+      <div class="how-num">03 — DETECT</div>
+      <div class="how-title">Deterministic finding generation</div>
+      <div class="how-body">Gap signals identified and aggregated into a 4-level verdict with finding rationale, trigger pattern, and basis evidence. No probabilistic scoring.</div>
+    </div>
+    <div class="how-card">
+      <div class="how-num">04 — REVIEW</div>
+      <div class="how-title">Human review workflow</div>
+      <div class="how-body">Output is structured for QA/RA review — not autonomous compliance determination. Findings include full traceability for reviewer verification and escalation.</div>
+    </div>
+  </div>
+</section>
+
+<section id="verdicts">
+  <div class="section-label">Verdict system</div>
+  <h2 class="section-title">Four-level deterministic output</h2>
+  <p class="section-body">Every evaluation produces one of four verdicts, each backed by structured finding rationale, trigger pattern, and clause mapping — designed for reviewer action.</p>
+  <div class="verdict-layout">
+    <div class="verdict-list">
+      <div class="verdict-item">
+        <span class="verdict-badge v-compliant">COMPLIANT</span>
+        <div class="verdict-desc"><strong>All required elements present.</strong> Evidence of procedure, execution, and closure mapped to applicable clauses.</div>
+      </div>
+      <div class="verdict-item">
+        <span class="verdict-badge v-minor">MINOR_GAP</span>
+        <div class="verdict-desc"><strong>Incomplete but not deficient.</strong> Procedural steps present with isolated documentation gaps — no systemic failure signal.</div>
+      </div>
+      <div class="verdict-item">
+        <span class="verdict-badge v-not">NOT_COMPLIANT</span>
+        <div class="verdict-desc"><strong>Required elements absent or deficient.</strong> Root cause, effectiveness review, or mandatory linkages missing from expected structure.</div>
+      </div>
+      <div class="verdict-item">
+        <span class="verdict-badge v-critical">CRITICAL_FINDING</span>
+        <div class="verdict-desc"><strong>Systemic or recurrent failure signal.</strong> Triggers on recurrence without CAPA linkage, effectiveness absence, or blank mandatory sections.</div>
+      </div>
+    </div>
+    <div>
+      <div class="output-label">Sample engine output</div>
+      <div class="output-panel">
+        <div class="line"><span class="key">document_type</span><span class="val">CAPA_RECORD</span></div>
+        <div class="line"><span class="key">verdict</span><span class="val danger">CRITICAL_FINDING</span></div>
+        <hr class="divider">
+        <div class="line"><span class="key">primary_clause</span><span class="val">ISO 13485 §8.5.2</span></div>
+        <div class="line"><span class="key">affected_clauses</span><span class="val">8.5.2, 8.5.3, 8.2.6</span></div>
+        <hr class="divider">
+        <div class="line"><span class="key">trigger_pattern</span><span class="val warn">CF-T-001 Pattern B</span></div>
+        <div class="line"><span class="key">basis</span><span class="val">recurrence_detected</span></div>
+        <div class="line"><span class="key">basis</span><span class="val">capa_linkage_absent</span></div>
+        <hr class="divider">
+        <div class="line"><span class="key">finding_summary</span><span class="val" style="white-space:normal;line-height:1.55">Recurrence of nonconformance identified without CAPA closure linkage. Effectiveness review evidence absent.</span></div>
+        <hr class="divider">
+        <div class="line"><span class="key">review_required</span><span class="val accent">true — human escalation</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="access" class="access-section">
+  <div class="access-inner">
+    <div>
+      <div class="section-label">Sandbox access</div>
+      <h2 class="section-title" style="margin-bottom:0.75rem">Evaluate FDA QMS audit scenarios</h2>
+      <p style="font-size:0.92rem;color:var(--text-secondary);line-height:1.8;margin-bottom:1rem">Submit synthetic QMS documents against the system. Explore how audit-readiness problems surface across CAPA, audit scope, preventive action, and supplier management scenarios.</p>
+      <p style="font-size:0.83rem;color:var(--text-muted);line-height:1.7">No production documents required. Designed for QA/RA professionals to evaluate structured finding behavior on realistic audit-pattern inputs.</p>
+      <div class="access-badges">
+        <div class="access-badge">FDA QMSR + ISO 13485:2016 oriented</div>
+        <div class="access-badge">Clause-level finding with basis evidence</div>
+        <div class="access-badge">5 evaluations per invite — 7-day window</div>
+        <div class="access-badge">Synthetic scenarios only — no PHI processed</div>
+        <div class="access-badge">API access available for integration pilots</div>
+        <div class="access-badge">Human review remains essential</div>
+      </div>
+    </div>
+    <div class="access-form">
+      <div class="form-title">Request sandbox invite</div>
+      <div class="form-sub">We are onboarding QA/RA practitioners and compliance leads for early evaluation. Enter your invite code, or contact us for access.</div>
+      <div class="field">
+        <label>Invite code</label>
+        <input type="text" id="invite-input" placeholder="ZXMD-XXXXXXXX" autocomplete="off">
+      </div>
+      <button class="btn-form" onclick="redeemInvite()">Access Audit Sandbox &rarr;</button>
+      <div class="form-note">No invite yet? Contact us at <span style="color:var(--accent)">hello@zexlmed.com</span> or use the Workflow Integration inquiry below.</div>
+    </div>
+  </div>
+</section>
+
+<section id="partner">
+  <div class="section-label">Workflow integration &amp; partnership</div>
+  <h2 class="section-title">Built for workflow integration</h2>
+  <p class="section-body">The system is available for workflow integration, API licensing, and POC project collaboration. If your QA process or compliance platform could benefit from deterministic clause-level analysis, we would like to discuss.</p>
+  <div class="partnership-grid">
+    <div class="partner-card">
+      <div class="partner-tag">WORKFLOW INTEGRATION</div>
+      <h4>QA/RA workflow embedding</h4>
+      <p>Integrate deterministic clause-level analysis into existing audit preparation, CAPA management, or QMS review workflows.</p>
+    </div>
+    <div class="partner-card">
+      <div class="partner-tag">API LICENSE</div>
+      <h4>Engine API for platforms</h4>
+      <p>Embed structured compliance analysis into regulatory consulting tools or medical device QMS software via REST API.</p>
+    </div>
+    <div class="partner-card">
+      <div class="partner-tag">POC COLLABORATION</div>
+      <h4>Proof-of-concept engagement</h4>
+      <p>Structured POC for organizations evaluating clause-level compliance intelligence against their QA/RA scenarios and document types.</p>
+    </div>
+  </div>
+  <div style="margin-top:2.5rem;padding:1.5rem 2rem;background:var(--card-bg);border:1px solid var(--border);border-radius:3px;display:inline-block">
+    <div style="font-family:var(--mono);font-size:0.65rem;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:0.35rem">PARTNERSHIP INQUIRY</div>
+    <div style="font-size:0.92rem;color:var(--text-secondary)">Contact: <span style="color:var(--accent);font-family:var(--mono)">hello@zexlmed.com</span></div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-top">
+    <div>
+      <div class="footer-logo">ZEXL<span>med</span></div>
+      <div class="footer-tagline">Structured audit-readiness workflows for medical device quality systems.</div>
+    </div>
+    <div class="footer-trust">
+      <div class="trust-item">Closed Beta</div>
+      <div class="trust-item">Synthetic Sandbox Environment</div>
+      <div class="trust-item">Human review remains essential</div>
+      <div class="trust-item">No autonomous compliance claims</div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    ZEXL med is a structured finding system for audit-readiness evaluation. Outputs are intended to support human QA/RA review workflows — not to constitute regulatory compliance determinations. No PHI is processed. US medical device market focus. &nbsp;&middot;&nbsp; zexlmed.com
+  </div>
+</footer>
+
+<div id="toast"></div>
+
+<script>
+function showToast(msg,ok){
+  var t=document.getElementById('toast');
+  t.textContent=msg;
+  t.style.background=ok?'var(--accent)':'#cc4444';
+  t.style.color=ok?'var(--navy)':'#fff';
+  t.classList.add('show');
+  setTimeout(function(){t.classList.remove('show');},3200);
+}
+async function redeemInvite(){
+  var code=document.getElementById('invite-input').value.trim();
+  if(!code){showToast('Enter an invite code',false);return;}
+  var btn=document.querySelector('.btn-form');
+  btn.textContent='Verifying...';btn.disabled=true;
+  try{
+    var r=await fetch('https://zexl-med-core-production.up.railway.app/invite/redeem',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({code:code})
+    });
+    var d=await r.json();
+    if(r.ok){showToast('Access granted — API key issued',true);document.getElementById('invite-input').value='';}
+    else showToast(d.detail||'Invalid or expired invite code',false);
+  }catch(e){showToast('Connection error — please try again',false);}
+  btn.textContent='Access Audit Sandbox \u2192';btn.disabled=false;
+}
+document.getElementById('invite-input').addEventListener('keydown',function(e){if(e.key==='Enter')redeemInvite();});
+</script>
+</body>
+</html>
