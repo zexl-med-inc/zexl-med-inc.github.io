@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acceptable Use Policy — ZEXL med</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0a1628;--card-bg:#0f1f35;--border:#1e3a5f;
+  --accent:#2eb89a;--text-primary:#e8edf2;--text-secondary:#8a9bb0;--text-muted:#5a6e82;
+  --mono:'DM Mono',monospace;--sans:'Instrument Sans',sans-serif;
+}
+body{background:var(--navy);color:var(--text-primary);font-family:var(--sans);font-size:15px;line-height:1.75;min-height:100vh}
+nav{display:flex;align-items:center;justify-content:space-between;padding:1rem 3rem;border-bottom:1px solid var(--border);background:rgba(10,22,40,0.95)}
+.nav-logo{font-family:var(--mono);font-size:0.95rem;font-weight:500;color:var(--accent);text-decoration:none}
+.nav-logo span{color:var(--text-secondary);font-weight:400}
+.nav-back{font-size:0.8rem;color:var(--text-muted);font-family:var(--mono);text-decoration:none;transition:color 0.2s}
+.nav-back:hover{color:var(--accent)}
+.container{max-width:760px;margin:0 auto;padding:4rem 2rem 6rem}
+.doc-eyebrow{font-family:var(--mono);font-size:0.68rem;color:var(--accent);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:0.75rem}
+.doc-title{font-size:2rem;font-weight:600;color:var(--text-primary);margin-bottom:0.5rem;line-height:1.2}
+.doc-date{font-family:var(--mono);font-size:0.75rem;color:var(--text-muted);margin-bottom:3rem;padding-bottom:2rem;border-bottom:1px solid var(--border)}
+h2{font-size:1rem;font-weight:600;color:var(--text-primary);margin:2.5rem 0 0.75rem;letter-spacing:0.02em}
+p{color:var(--text-secondary);margin-bottom:0.9rem;font-size:0.9rem}
+ul{list-style:none;margin:0.5rem 0 1rem 0;display:flex;flex-direction:column;gap:0.4rem}
+ul li{color:var(--text-secondary);font-size:0.9rem;padding-left:1.25rem;position:relative}
+ul li::before{content:'—';position:absolute;left:0;color:var(--text-muted)}
+footer{border-top:1px solid var(--border);padding:2rem 3rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem}
+.footer-logo{font-family:var(--mono);font-size:0.82rem;color:var(--text-muted)}
+.footer-logo span{color:var(--accent)}
+.footer-links{display:flex;gap:1.5rem}
+.footer-links a{font-size:0.72rem;color:var(--text-muted);font-family:var(--mono);text-decoration:none;transition:color 0.2s}
+.footer-links a:hover{color:var(--accent)}
+@media(max-width:640px){nav,footer{padding:1rem 1.5rem}.container{padding:2.5rem 1.5rem}}
+</style>
+</head>
+<body>
+<nav>
+  <a href="../index.html" class="nav-logo">ZEXL<span>med</span></a>
+  <a href="../index.html" class="nav-back">← Back to zexlmed.com</a>
+</nav>
+<div class="container">
+  <div class="doc-eyebrow">Legal</div>
+  <div class="doc-title">Acceptable Use Policy</div>
+  <div class="doc-date">Effective Date: May 14, 2026</div>
+
+  <h2>1. Purpose</h2>
+  <p>This Acceptable Use Policy ("AUP") defines permitted and prohibited uses of the ZEXL med compliance analysis platform ("Service"). This AUP is incorporated into and forms part of the ZEXL med Terms of Service.</p>
+
+  <h2>2. Permitted Uses</h2>
+  <p>The Service is designed for use by quality assurance professionals, regulatory affairs personnel, compliance consultants, and medical device organizations for the purpose of:</p>
+  <ul>
+    <li>Evaluating QMS documents against ISO 13485:2016 and FDA QMSR frameworks</li>
+    <li>Identifying potential compliance gaps in internal QMS documentation</li>
+    <li>Supporting audit preparation and readiness assessment workflows</li>
+    <li>Evaluating the Service's analysis capabilities for integration or partnership purposes</li>
+  </ul>
+
+  <h2>3. Prohibited Uses</h2>
+  <p>3.1 Prohibited Document Types:</p>
+  <ul>
+    <li>Documents containing protected health information (PHI) as defined under HIPAA</li>
+    <li>Documents containing personally identifiable information (PII) not necessary for QMS analysis</li>
+    <li>Documents subject to export control restrictions</li>
+    <li>Confidential third-party documents for which you do not have authorization to submit</li>
+  </ul>
+  <p>3.2 Prohibited Activities:</p>
+  <ul>
+    <li>Submitting documents for purposes other than legitimate QMS compliance analysis</li>
+    <li>Attempting to probe, test, or exploit the analysis engine for purposes other than intended use</li>
+    <li>Reverse-engineering or extracting the underlying rule logic or analysis algorithms</li>
+    <li>Using Service outputs as final regulatory determinations without qualified human review</li>
+    <li>Representing Service outputs as official regulatory certifications or audit results</li>
+    <li>Sharing, selling, or transferring access credentials or invite codes to unauthorized parties</li>
+    <li>Automated bulk submission of documents without prior written authorization</li>
+    <li>Using the Service in any manner that violates applicable laws or regulations</li>
+  </ul>
+
+  <h2>4. No Autonomous Compliance Determinations</h2>
+  <p>Service outputs are structured findings intended to support human QA/RA review workflows. Users must not rely on Service outputs as autonomous compliance determinations or substitute Service outputs for qualified regulatory counsel. Human review remains essential for all compliance decisions.</p>
+
+  <h2>5. Consequences of Violation</h2>
+  <p>Violation of this AUP may result in:</p>
+  <ul>
+    <li>Immediate suspension or termination of Service access</li>
+    <li>Revocation of invite codes and API keys</li>
+    <li>Legal action where violations constitute unlawful conduct</li>
+  </ul>
+  <p>The Company reserves the right to investigate suspected AUP violations and to cooperate with law enforcement where applicable.</p>
+
+  <h2>6. Reporting Violations</h2>
+  <p>To report suspected AUP violations or misuse of the Service, contact us at: <a href="mailto:hello@zexlmed.com" style="color:var(--accent)">hello@zexlmed.com</a></p>
+
+  <h2>7. Modifications</h2>
+  <p>The Company may update this AUP from time to time. Continued use of the Service following notice of updates constitutes acceptance of the revised AUP.</p>
+</div>
+<footer>
+  <div class="footer-logo">ZEXL<span>med</span> &nbsp;·&nbsp; zexlmed.com</div>
+  <div class="footer-links">
+    <a href="tos.html">Terms of Service</a>
+    <a href="privacy.html">Privacy Policy</a>
+    <a href="aup.html">Acceptable Use Policy</a>
+  </div>
+</footer>
+</body>
+</html>
