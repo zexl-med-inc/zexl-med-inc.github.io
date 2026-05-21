@@ -328,10 +328,23 @@ footer{padding:2.5rem 3rem;border-top:1px solid var(--border)}
     </div>
     <div class="access-form">
       <div class="form-title">Request sandbox invite</div>
-      <div class="form-sub">We are onboarding QA/RA practitioners and compliance leads for early evaluation. Enter your invite code, or contact us for access.</div>
+      <div class="form-sub">We are onboarding QA/RA practitioners and compliance leads for early evaluation. Enter your invite code and email to activate access.</div>
       <div class="field">
         <label>Invite code</label>
         <input type="text" id="invite-input" placeholder="ZXMD-XXXXXXXX" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="email-input" placeholder="you@company.com" autocomplete="email">
+      </div>
+      <div style="margin-bottom:1rem;display:flex;align-items:flex-start;gap:0.6rem">
+        <input type="checkbox" id="consent-check" style="margin-top:3px;accent-color:var(--accent);flex-shrink:0">
+        <label for="consent-check" style="font-size:0.75rem;color:var(--text-muted);line-height:1.55;cursor:pointer">
+          I have read and agree to the
+          <a href="legal/tos.html" target="_blank" style="color:var(--accent);text-decoration:none">Terms of Service</a>
+          and
+          <a href="legal/privacy.html" target="_blank" style="color:var(--accent);text-decoration:none">Privacy Policy</a>
+        </label>
       </div>
       <button class="btn-form" onclick="redeemInvite()">Access Audit Sandbox &rarr;</button>
       <div class="form-note">No invite yet? Contact us at <a href="mailto:hello@zexlmed.com" style="color:var(--accent);text-decoration:none">hello@zexlmed.com</a> or use the Workflow Integration inquiry below.</div>
@@ -402,16 +415,23 @@ function showToast(msg,ok){
 }
 async function redeemInvite(){
   var code=document.getElementById('invite-input').value.trim();
+  var email=document.getElementById('email-input').value.trim();
+  var consent=document.getElementById('consent-check').checked;
   if(!code){showToast('Enter an invite code',false);return;}
+  if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){showToast('Enter a valid email address',false);return;}
+  if(!consent){showToast('Please accept the Terms of Service and Privacy Policy to continue',false);return;}
   var btn=document.querySelector('.btn-form');
   btn.textContent='Verifying...';btn.disabled=true;
   try{
     var r=await fetch('https://zexl-med-core-production.up.railway.app/invite/redeem',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({code:code})
+      body:JSON.stringify({code:code,email:email})
     });
     var d=await r.json();
-    if(r.ok){showToast('Access granted — API key issued',true);document.getElementById('invite-input').value='';}
+    if(r.ok){
+      sessionStorage.setItem('zexl_beta_api_key', d.api_key);
+      window.location.href = 'app.html';
+    }
     else showToast(d.detail||'Invalid or expired invite code',false);
   }catch(e){showToast('Connection error — please try again',false);}
   btn.textContent='Access Audit Sandbox \u2192';btn.disabled=false;
