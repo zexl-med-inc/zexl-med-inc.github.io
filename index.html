@@ -429,7 +429,7 @@ async function redeemInvite(){
     });
     var d=await r.json();
     if(r.ok){
-      sessionStorage.setItem('zexl_beta_api_key', d.api_key);
+      localStorage.setItem('zexl_beta_api_key', d.api_key);
       window.location.href = 'app.html';
     }
     else showToast(d.detail||'Invalid or expired invite code',false);
