@@ -224,14 +224,17 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 
   <div id="state-auth">
     <div class="state-card">
-      <div class="form-title">Enter your API key</div>
+      <div class="form-title">Enter your invite code</div>
       <div class="form-sub" style="margin-bottom:1.25rem">
-        Your API key was issued when you redeemed your invite code.
-        Contact <a href="mailto:hello@zexlmed.com" style="color:var(--accent)">hello@zexlmed.com</a> if you need a new invite.
+        If you have already redeemed your invite code, your API key
+        was saved in this browser. It will be restored automatically
+        on your next visit. If you are using a different browser or
+        device, paste your API key below to continue.
+        Contact <a href="mailto:hello@zexlmed.com" style="color:var(--accent)">hello@zexlmed.com</a> if you need assistance.
       </div>
       <div class="field">
-        <label>API Key</label>
-        <input type="text" id="auth-key-input" placeholder="zxmd_..." autocomplete="off">
+        <label>Invite code</label>
+        <input type="text" id="auth-key-input" placeholder="Enter your invite code" autocomplete="off">
       </div>
       <button class="btn-form" onclick="submitAuth()">Start Evaluation →</button>
     </div>
@@ -343,7 +346,7 @@ let apiKey = '';
 let currentReportId = '';
 
 window.addEventListener('DOMContentLoaded', () => {
-  const stored = sessionStorage.getItem('zexl_beta_api_key');
+  const stored = localStorage.getItem('zexl_beta_api_key');
   if (stored) {
     apiKey = stored;
     showState('upload');
@@ -373,7 +376,7 @@ function submitAuth() {
   const v = document.getElementById('auth-key-input').value.trim();
   if (!v) { showToast('Enter your API key', false); return; }
   apiKey = v;
-  sessionStorage.setItem('zexl_beta_api_key', v);
+  localStorage.setItem('zexl_beta_api_key', v);
   showState('upload');
 }
 
