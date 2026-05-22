@@ -406,7 +406,7 @@ async function runEvaluation() {
     if (!r.ok) {
       const msgs = {
         400: 'Only .docx files are supported.',
-        401: 'Invalid or expired API key. Request a new invite at hello@zexlmed.com',
+        401: 'Invalid or expired invite code. Please request a new invite at hello@zexlmed.com',
         413: 'File too large. Maximum 10MB.',
         429: d.detail || 'Beta usage limit reached. Contact hello@zexlmed.com for extended access.',
         500: 'Evaluation failed. Please try again or contact hello@zexlmed.com'
