@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZEXL med — Audit Sandbox</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0a1628;
+  --navy-mid:#112240;
+  --navy-light:#1e3a5f;
+  --steel:#2a4a6b;
+  --accent:#2eb89a;
+  --accent-dim:#25967e;
+  --accent-glow:rgba(46,184,154,0.10);
+  --text-primary:#e8edf2;
+  --text-secondary:#8a9bb0;
+  --text-muted:#5a6e82;
+  --border:#1e3a5f;
+  --border-accent:rgba(46,184,154,0.28);
+  --card-bg:#0f1f35;
+  --serif:'DM Serif Display',Georgia,serif;
+  --mono:'DM Mono',monospace;
+  --sans:'Instrument Sans',sans-serif;
+}
+html{scroll-behavior:smooth}
+body{background:var(--navy);color:var(--text-primary);font-family:var(--sans);font-size:16px;line-height:1.6;min-height:100vh}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:1rem 3rem;background:rgba(10,22,40,0.92);backdrop-filter:blur(12px);border-bottom:1px solid rgba(30,58,95,0.5)}
+.nav-logo{font-family:var(--mono);font-size:1rem;font-weight:500;color:var(--accent);letter-spacing:0.05em}
+.nav-logo span{color:var(--text-secondary);font-weight:400}
+.nav-links{display:flex;align-items:center;gap:2rem}
+.nav-links a{color:var(--text-secondary);text-decoration:none;font-size:0.875rem;font-weight:500;letter-spacing:0.03em;transition:color 0.2s}
+.nav-links a:hover{color:var(--text-primary)}
+.nav-cta{background:transparent;border:1px solid var(--border-accent);color:var(--accent);padding:0.45rem 1.1rem;border-radius:4px;font-family:var(--sans);font-size:0.875rem;font-weight:600;cursor:pointer;letter-spacing:0.04em;transition:all 0.2s;text-decoration:none}
+.nav-cta:hover{background:var(--accent-glow)}
+
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 2.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.35}}
+
+.form-title{font-size:0.95rem;font-weight:600;color:var(--text-primary);margin-bottom:0.35rem}
+.form-sub{font-size:0.8rem;color:var(--text-muted);margin-bottom:1.5rem;line-height:1.6}
+.field{margin-bottom:1rem}
+.field label{display:block;font-size:0.72rem;font-weight:500;color:var(--text-secondary);margin-bottom:0.4rem;letter-spacing:0.04em}
+.field input{width:100%;background:var(--card-bg);border:1px solid var(--border);border-radius:2px;padding:0.55rem 0.75rem;font-family:var(--mono);font-size:0.82rem;color:var(--text-primary);outline:none;transition:border-color 0.2s}
+.field input:focus{border-color:var(--border-accent)}
+.field input::placeholder{color:var(--text-muted)}
+.btn-form{width:100%;background:var(--accent);color:var(--navy);padding:0.65rem;border:none;border-radius:2px;font-family:var(--sans);font-size:0.875rem;font-weight:600;cursor:pointer;letter-spacing:0.04em;transition:background 0.2s;margin-top:0.25rem}
+.btn-form:hover{background:#35cead}
+.btn-form:disabled{opacity:0.6;cursor:not-allowed}
+.btn-secondary{background:transparent;border:1px solid var(--border);color:var(--text-secondary);padding:0.75rem 1.75rem;border-radius:4px;font-family:var(--sans);font-size:0.9rem;font-weight:500;cursor:pointer;letter-spacing:0.04em;transition:all 0.2s;text-decoration:none;display:inline-block}
+.btn-secondary:hover{border-color:var(--text-muted);color:var(--text-primary)}
+
+.app-wrap { max-width: 720px; margin: 0 auto; padding: 6rem 2rem 4rem; }
+
+.beta-badge {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.12em;
+  background: rgba(46,184,154,0.08); color: var(--accent);
+  border: 1px solid var(--border-accent);
+  padding: 0.2rem 0.65rem; border-radius: 2px;
+  margin-bottom: 1.5rem;
+}
+
+.state-card {
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 3px; padding: 2rem;
+}
+
+.dropzone {
+  border: 1px dashed var(--border); border-radius: 3px;
+  padding: 2.5rem; text-align: center; cursor: pointer;
+  transition: border-color 0.2s; margin-bottom: 1rem;
+  font-size: 0.85rem; color: var(--text-muted);
+}
+.dropzone:hover, .dropzone.dragover { border-color: var(--accent); color: var(--text-secondary); }
+.dropzone .filename { color: var(--accent); font-family: var(--mono); font-size: 0.82rem; margin-top: 0.5rem; }
+
+.how-to-read {
+  border-left: 3px solid var(--accent); background: var(--card-bg);
+  padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; border-radius: 0 3px 3px 0;
+}
+.how-to-read .htr-label {
+  font-family: var(--mono); font-size: 0.63rem; color: var(--accent);
+  letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 0.75rem;
+}
+.how-to-read ol { list-style: none; display: flex; flex-direction: column; gap: 0.35rem; }
+.how-to-read ol li { font-size: 0.83rem; color: var(--text-secondary); }
+.how-to-read ol li strong { color: var(--text-primary); }
+.how-to-read .htr-footer {
+  font-size: 0.73rem; color: var(--text-muted);
+  margin-top: 0.75rem; line-height: 1.55;
+}
+
+.result-block {
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 3px; padding: 1.5rem; margin-bottom: 1rem;
+}
+.block-label {
+  font-family: var(--mono); font-size: 0.63rem; color: var(--accent);
+  letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 1rem;
+}
+
+.verdict-badge {
+  font-family: var(--mono); font-size: 0.8rem; font-weight: 500;
+  letter-spacing: 0.07em; padding: 0.35rem 0.9rem;
+  border-radius: 2px; display: inline-block; margin-bottom: 0.75rem;
+}
+.v-COMPLIANT        { background:rgba(46,184,154,0.1);  color:var(--accent); border:1px solid rgba(46,184,154,0.22); }
+.v-MINOR_GAP        { background:rgba(210,160,20,0.1);  color:#c49a18;       border:1px solid rgba(210,160,20,0.2); }
+.v-NOT_COMPLIANT    { background:rgba(230,100,60,0.1);  color:#d46840;       border:1px solid rgba(230,100,60,0.2); }
+.v-CRITICAL_FINDING { background:rgba(210,50,50,0.1);   color:#cc4444;       border:1px solid rgba(210,50,50,0.2); }
+
+.escalation-box {
+  background: rgba(210,50,50,0.08); border: 1px solid rgba(210,50,50,0.25);
+  padding: 0.75rem 1rem; border-radius: 2px; margin-top: 0.75rem;
+  font-family: var(--mono); font-size: 0.78rem; color: #cc4444;
+}
+
+.evidence-list { list-style: none; display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.5rem; }
+.evidence-list li {
+  font-family: var(--mono); font-size: 0.76rem; color: var(--text-secondary);
+  padding-left: 1rem; position: relative;
+}
+.evidence-list li::before { content: '·'; position: absolute; left: 0; color: var(--accent); }
+
+.engine-rec {
+  font-family: var(--mono); font-size: 0.78rem; color: var(--text-secondary);
+  background: var(--navy); border: 1px solid var(--border);
+  padding: 0.75rem 1rem; border-radius: 2px; margin-top: 0.75rem;
+}
+.engine-rec .rec-label {
+  font-size: 0.63rem; color: var(--text-muted);
+  letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.4rem;
+}
+
+.comprehension {
+  border-top: 1px solid var(--border);
+  padding: 1.5rem 0; margin-top: 2rem;
+}
+.comp-q { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.75rem; }
+.comp-buttons { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.comp-btn {
+  background: transparent; border: 1px solid var(--border);
+  color: var(--text-secondary); padding: 0.45rem 1rem;
+  border-radius: 2px; font-family: var(--sans); font-size: 0.8rem;
+  cursor: pointer; transition: all 0.2s;
+}
+.comp-btn:hover { border-color: var(--accent); color: var(--accent); }
+.comp-thanks { font-size: 0.82rem; color: var(--text-muted); font-family: var(--mono); }
+
+.result-meta {
+  font-family: var(--mono); font-size: 0.68rem; color: var(--text-muted);
+  margin-top: 1.5rem; display: flex; gap: 1.5rem; flex-wrap: wrap;
+}
+
+#app-toast {
+  position: fixed; bottom: 2rem; right: 2rem;
+  padding: 0.75rem 1.25rem; border-radius: 4px;
+  font-family: var(--mono); font-size: 0.78rem; font-weight: 500;
+  opacity: 0; transform: translateY(8px); transition: all 0.3s;
+  pointer-events: none; z-index: 200;
+}
+#app-toast.show { opacity: 1; transform: translateY(0); }
+
+.hidden { display: none !important; }
+
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(10,22,40,0.85); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1.5rem;
+}
+.modal-box {
+  background: var(--card-bg); border: 1px solid var(--border-accent);
+  border-radius: 3px; padding: 2rem; max-width: 480px; width: 100%;
+}
+.modal-title {
+  font-family: var(--mono); font-size: 0.68rem; color: var(--accent);
+  letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 1.25rem;
+}
+.modal-list {
+  list-style: none; display: flex; flex-direction: column; gap: 0.6rem;
+  margin-bottom: 1.5rem;
+}
+.modal-list li {
+  font-size: 0.83rem; color: var(--text-secondary);
+  padding-left: 1rem; position: relative; line-height: 1.6;
+}
+.modal-list li::before { content: '·'; position: absolute; left: 0; color: var(--accent); }
+.modal-confirm {
+  width: 100%; background: var(--accent); color: var(--navy);
+  padding: 0.65rem; border: none; border-radius: 2px;
+  font-family: var(--sans); font-size: 0.875rem; font-weight: 600;
+  cursor: pointer; letter-spacing: 0.04em; transition: background 0.2s;
+}
+.modal-confirm:hover { background: #35cead; }
+
+@media(max-width:768px){
+  nav{padding:1rem 1.5rem}
+  .app-wrap{padding-left:1.5rem;padding-right:1.5rem}
+  .nav-links{display:none}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">ZEXL<span>med</span></div>
+  <div class="nav-links">
+    <a href="index.html#why">Why deterministic</a>
+    <a href="index.html#how">How it works</a>
+    <a href="index.html#verdicts">Verdicts</a>
+    <a href="index.html#access">Sandbox access</a>
+    <a href="index.html#partner">Partnership</a>
+  </div>
+  <a href="index.html" class="nav-cta">← Back</a>
+</nav>
+
+<div class="app-wrap">
+
+  <div id="state-auth">
+    <div class="state-card">
+      <div class="form-title">Enter your API key</div>
+      <div class="form-sub" style="margin-bottom:1.25rem">
+        Your API key was issued when you redeemed your invite code.
+        Contact <a href="mailto:hello@zexlmed.com" style="color:var(--accent)">hello@zexlmed.com</a> if you need a new invite.
+      </div>
+      <div class="field">
+        <label>API Key</label>
+        <input type="text" id="auth-key-input" placeholder="zxmd_..." autocomplete="off">
+      </div>
+      <button class="btn-form" onclick="submitAuth()">Start Evaluation →</button>
+    </div>
+  </div>
+
+  <div id="state-upload" class="hidden">
+    <div class="beta-badge" onclick="openBetaModal()" style="cursor:pointer">
+      <span class="status-dot"></span>CLOSED BETA — AUDIT SANDBOX ⓘ
+    </div>
+    <div class="state-card">
+      <div class="form-title" style="margin-bottom:0.35rem">Upload QMS Document</div>
+      <div class="form-sub" style="margin-bottom:1.25rem">
+        Submit a .docx QMS document for clause-level evaluation against ISO 13485:2016 / FDA QMSR.
+      </div>
+      <div class="dropzone" id="dropzone" onclick="document.getElementById('file-input').click()">
+        <div>Drop .docx file here or click to select</div>
+        <div class="filename hidden" id="filename-display"></div>
+      </div>
+      <input type="file" id="file-input" accept=".docx" class="hidden">
+      <button class="btn-form" id="eval-btn" onclick="runEvaluation()">Evaluate Document →</button>
+    </div>
+  </div>
+
+  <div id="state-result" class="hidden">
+
+    <div class="how-to-read">
+      <div class="htr-label">How to read this result</div>
+      <ol>
+        <li><strong>① WHY</strong> — The regulatory basis for this finding</li>
+        <li><strong>② GAP</strong> — What is missing or insufficient in the document</li>
+        <li><strong>③ RISK</strong> — The actual compliance exposure if unaddressed</li>
+      </ol>
+      <div class="htr-footer">
+        Human review is required. This result supports audit preparation — it is not a compliance determination.
+      </div>
+    </div>
+
+    <div class="result-block">
+      <div class="block-label">① Decision</div>
+      <div id="res-verdict-badge" class="verdict-badge"></div>
+      <div id="res-risk" style="font-size:0.8rem;color:var(--text-muted);font-family:var(--mono);margin-bottom:0.75rem"></div>
+      <div id="res-escalation" class="escalation-box hidden">
+        ⚠ Human escalation required. Do not defer QA management review.
+      </div>
+      <div id="res-explanation" style="font-size:0.92rem;color:var(--text-secondary);margin-top:0.75rem;line-height:1.75"></div>
+    </div>
+
+    <div class="result-block">
+      <div class="block-label">② Why — Regulatory Basis</div>
+      <div id="res-basis" style="font-size:0.85rem;color:var(--text-secondary);line-height:1.75;margin-bottom:1rem"></div>
+      <div style="font-family:var(--mono);font-size:0.63rem;color:var(--text-muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:0.5rem">Evidence Signals</div>
+      <ul id="res-evidence" class="evidence-list"></ul>
+    </div>
+
+    <div class="result-block">
+      <div class="block-label">③ What to Do</div>
+      <div id="res-action-fixed" style="font-size:0.92rem;color:var(--text-primary);line-height:1.75;margin-bottom:0.5rem"></div>
+      <div class="engine-rec">
+        <div class="rec-label">Engine Recommendation</div>
+        <div id="res-action-engine"></div>
+      </div>
+    </div>
+
+    <div class="comprehension">
+      <div class="comp-q">Was this result clear to you?</div>
+      <div class="comp-buttons" id="comp-buttons">
+        <button class="comp-btn" onclick="sendFeedback('yes')">Yes, I understand it</button>
+        <button class="comp-btn" onclick="sendFeedback('somewhat')">Somewhat — I had questions</button>
+        <button class="comp-btn" onclick="sendFeedback('no')">No, I could not follow it</button>
+      </div>
+      <div class="comp-thanks hidden" id="comp-thanks">Thank you. Your feedback helps us improve result clarity.</div>
+    </div>
+
+    <div class="result-meta" id="res-meta"></div>
+
+    <button class="btn-secondary" style="margin-top:1.5rem" onclick="resetToUpload()">← Evaluate another document</button>
+
+  </div>
+
+</div>
+
+<div class="modal-overlay hidden" id="beta-modal">
+  <div class="modal-box">
+    <div class="modal-title">Beta Software Notice</div>
+    <ul class="modal-list">
+      <li>Assessment results are for audit preparation reference only</li>
+      <li>Not a substitute for qualified regulatory counsel</li>
+      <li>Engine coverage: 13 of 21 ISO 13485 clauses active</li>
+      <li>Unassessed clauses will not generate findings</li>
+      <li>Results require human QA/RA review before any compliance action</li>
+    </ul>
+    <button class="modal-confirm" onclick="closeBetaModal()">I understand — Continue</button>
+  </div>
+</div>
+
+<div id="app-toast"></div>
+
+<script>
+const API_BASE = 'https://zexl-med-core-production.up.railway.app';
+
+const FIXED_ACTIONS = {
+  COMPLIANT:        'No immediate action required. Maintain current documentation standards and verify at next audit cycle.',
+  MINOR_GAP:        'Review identified documentation gaps. Address before next scheduled audit. No immediate escalation required.',
+  NOT_COMPLIANT:    'Initiate corrective action. Document a remediation plan with target dates and assign ownership.',
+  CRITICAL_FINDING: 'Immediate review required. Escalate to QA management now. Do not defer. Initiate CAPA if not already in progress.'
+};
+
+let apiKey = '';
+let currentReportId = '';
+
+window.addEventListener('DOMContentLoaded', () => {
+  const stored = sessionStorage.getItem('zexl_beta_api_key');
+  if (stored) {
+    apiKey = stored;
+    showState('upload');
+  } else {
+    showState('auth');
+  }
+  const dz = document.getElementById('dropzone');
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('dragover');
+    const f = e.dataTransfer.files[0];
+    if (f) setFile(f);
+  });
+  document.getElementById('file-input').addEventListener('change', e => {
+    if (e.target.files[0]) setFile(e.target.files[0]);
+  });
+});
+
+function showState(s) {
+  ['auth','upload','result'].forEach(id => {
+    document.getElementById('state-' + id).classList.toggle('hidden', id !== s);
+  });
+}
+
+function submitAuth() {
+  const v = document.getElementById('auth-key-input').value.trim();
+  if (!v) { showToast('Enter your API key', false); return; }
+  apiKey = v;
+  sessionStorage.setItem('zexl_beta_api_key', v);
+  showState('upload');
+}
+
+let selectedFile = null;
+function setFile(f) {
+  if (!f.name.endsWith('.docx')) { showToast('Only .docx files are supported.', false); return; }
+  selectedFile = f;
+  const fd = document.getElementById('filename-display');
+  fd.textContent = f.name;
+  fd.classList.remove('hidden');
+}
+
+async function runEvaluation() {
+  if (!selectedFile) { showToast('Please select a .docx file first.', false); return; }
+  const btn = document.getElementById('eval-btn');
+  btn.textContent = 'Evaluating against ISO 13485 / FDA QMSR…';
+  btn.disabled = true;
+  const fd = new FormData();
+  fd.append('file', selectedFile);
+  try {
+    const r = await fetch(API_BASE + '/evaluate', {
+      method: 'POST',
+      headers: { 'X-API-Key': apiKey },
+      body: fd
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      const msgs = {
+        400: 'Only .docx files are supported.',
+        401: 'Invalid or expired API key. Request a new invite at hello@zexlmed.com',
+        413: 'File too large. Maximum 10MB.',
+        429: d.detail || 'Beta usage limit reached. Contact hello@zexlmed.com for extended access.',
+        500: 'Evaluation failed. Please try again or contact hello@zexlmed.com'
+      };
+      showToast(msgs[r.status] || 'Unexpected error. Please try again.', false);
+    } else {
+      renderResult(d);
+      showState('result');
+    }
+  } catch(e) {
+    showToast('Connection error. Please check your connection and try again.', false);
+  }
+  btn.textContent = 'Evaluate Document →';
+  btn.disabled = false;
+}
+
+function renderResult(d) {
+  currentReportId = d.report_id;
+
+  const badge = document.getElementById('res-verdict-badge');
+  badge.textContent = d.decision;
+  badge.className = 'verdict-badge v-' + d.decision;
+
+  const risk = document.getElementById('res-risk');
+  risk.textContent = d.report.risk ? 'Risk: ' + d.report.risk : '';
+
+  document.getElementById('res-escalation').classList.toggle('hidden', d.review_status !== 'YES');
+  document.getElementById('res-explanation').textContent = d.explanation;
+
+  document.getElementById('res-basis').textContent = d.report.basis;
+  const evList = document.getElementById('res-evidence');
+  evList.innerHTML = '';
+  (d.evidence_trace || []).slice(0, 3).forEach(ev => {
+    const li = document.createElement('li');
+    li.textContent = ev;
+    evList.appendChild(li);
+  });
+
+  document.getElementById('res-action-fixed').textContent = FIXED_ACTIONS[d.decision] || '';
+  document.getElementById('res-action-engine').textContent = d.report.required_action;
+
+  document.getElementById('comp-buttons').classList.remove('hidden');
+  document.getElementById('comp-thanks').classList.add('hidden');
+
+  const m = d.audit_metadata;
+  let metaHTML = `<span>${m.file_name}</span><span>${m.evaluated_at.slice(0,19).replace('T',' ')} UTC</span><span>engine: ${m.engine_version}</span>`;
+  if (d.coverage_note) metaHTML += `<span style="color:var(--text-muted)">${d.coverage_note}</span>`;
+  document.getElementById('res-meta').innerHTML = metaHTML;
+}
+
+async function sendFeedback(clarity) {
+  if (!currentReportId) return;
+  document.getElementById('comp-buttons').classList.add('hidden');
+  document.getElementById('comp-thanks').classList.remove('hidden');
+  try {
+    await fetch(API_BASE + '/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
+      body: JSON.stringify({ report_id: currentReportId, clarity })
+    });
+  } catch(e) { /* silent */ }
+}
+
+function resetToUpload() {
+  selectedFile = null;
+  document.getElementById('file-input').value = '';
+  document.getElementById('filename-display').classList.add('hidden');
+  showState('upload');
+}
+
+function openBetaModal() {
+  document.getElementById('beta-modal').classList.remove('hidden');
+}
+function closeBetaModal() {
+  document.getElementById('beta-modal').classList.add('hidden');
+}
+
+function showToast(msg, ok) {
+  const t = document.getElementById('app-toast');
+  t.textContent = msg;
+  t.style.background = ok ? 'var(--accent)' : '#cc4444';
+  t.style.color = ok ? 'var(--navy)' : '#fff';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3800);
+}
+</script>
+</body>
+</html>
