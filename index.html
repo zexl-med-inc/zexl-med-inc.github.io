@@ -405,6 +405,10 @@ footer{padding:2.5rem 3rem;border-top:1px solid var(--border)}
 <div id="toast"></div>
 
 <script>
+const _existingKey = localStorage.getItem('zexl_beta_api_key');
+if (_existingKey) {
+  window.location.href = 'app.html';
+}
 function showToast(msg,ok){
   var t=document.getElementById('toast');
   t.textContent=msg;
