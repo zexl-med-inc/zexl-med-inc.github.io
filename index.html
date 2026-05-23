@@ -405,7 +405,7 @@ footer{padding:2.5rem 3rem;border-top:1px solid var(--border)}
 <div id="toast"></div>
 
 <script>
-const _existingKey = localStorage.getItem('zexl_beta_api_key');
+const _existingKey = localStorage.getItem('zexl_api_key');
 if (_existingKey && !window.location.hash) {
   window.location.href = 'app.html';
 }
@@ -433,7 +433,7 @@ async function redeemInvite(){
     });
     var d=await r.json();
     if(r.ok){
-      localStorage.setItem('zexl_beta_api_key', d.api_key);
+      localStorage.setItem('zexl_api_key', d.api_key);
       window.location.href = 'app.html';
     }
     else showToast(d.detail||'Invalid or expired invite code',false);

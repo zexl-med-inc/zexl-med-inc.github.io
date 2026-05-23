@@ -218,7 +218,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
     <a href="index.html#partner">Partnership</a>
   </div>
   <a href="index.html#why" class="nav-cta"
-     onclick="localStorage.removeItem('zexl_beta_api_key')">
+     onclick="localStorage.removeItem('zexl_api_key')">
     ← Exit Sandbox
   </a>
 </nav>
@@ -349,7 +349,7 @@ let apiKey = '';
 let currentReportId = '';
 
 window.addEventListener('DOMContentLoaded', () => {
-  const stored = localStorage.getItem('zexl_beta_api_key');
+  const stored = localStorage.getItem('zexl_api_key');
   if (stored) {
     apiKey = stored;
     showState('upload');
@@ -379,7 +379,7 @@ function submitAuth() {
   const v = document.getElementById('auth-key-input').value.trim();
   if (!v) { showToast('Enter your API key', false); return; }
   apiKey = v;
-  localStorage.setItem('zexl_beta_api_key', v);
+  localStorage.setItem('zexl_api_key', v);
   showState('upload');
 }
 
