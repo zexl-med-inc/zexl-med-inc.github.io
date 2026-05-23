@@ -406,7 +406,7 @@ footer{padding:2.5rem 3rem;border-top:1px solid var(--border)}
 
 <script>
 const _existingKey = localStorage.getItem('zexl_api_key');
-if (_existingKey && !window.location.hash) {
+if (_existingKey) {
   window.location.href = 'app.html';
 }
 function showToast(msg,ok){
