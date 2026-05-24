@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ZEXL med — Audit Sandbox</title>
+<title>ZEXLmed — Audit Sandbox</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -217,7 +217,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
     <a href="index.html#access">Sandbox access</a>
     <a href="index.html#partner">Partnership</a>
   </div>
-<a href="index.html?home=1#why" class="nav-cta">
+<a href="index.html#why" class="nav-cta" onclick="exitSandbox(event)">
   ← Exit Sandbox
 </a>
 </nav>
@@ -335,6 +335,13 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 <div id="app-toast"></div>
 
 <script>
+function exitSandbox(e) {
+  e.preventDefault();
+  localStorage.removeItem('zexl_api_key');
+  localStorage.removeItem('zexl_invite_code');
+  window.location.href = 'index.html#why';
+}
+
 const API_BASE = 'https://zexl-med-core-production.up.railway.app';
 
 const FIXED_ACTIONS = {
@@ -406,14 +413,25 @@ async function runEvaluation() {
     });
     const d = await r.json();
     if (!r.ok) {
+      if (r.status === 429) {
+        var limitMsg = document.getElementById('limit-msg');
+        if (!limitMsg) {
+          limitMsg = document.createElement('div');
+          limitMsg.id = 'limit-msg';
+          limitMsg.style.cssText = 'margin-top:16px;padding:12px 16px;background:var(--border-accent);border-radius:6px;color:var(--text-main);font-size:0.9rem;';
+          document.getElementById('dropzone').after(limitMsg);
+        }
+        limitMsg.textContent = d.detail || 'Beta usage limit reached. Contact hello@zexlmed.com for extended access.';
+        limitMsg.style.display = 'block';
+      } else {
       const msgs = {
         400: 'Only .docx files are supported.',
         401: 'Invalid or expired invite code. Please request a new invite at hello@zexlmed.com',
         413: 'File too large. Maximum 10MB.',
-        429: d.detail || 'Beta usage limit reached. Contact hello@zexlmed.com for extended access.',
         500: 'Evaluation failed. Please try again or contact hello@zexlmed.com'
       };
       showToast(msgs[r.status] || 'Unexpected error. Please try again.', false);
+      }
     } else {
       renderResult(d);
       showState('result');

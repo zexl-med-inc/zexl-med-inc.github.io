@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ZEXL med — Audit Readiness for FDA QMSR / ISO 13485</title>
+<title>ZEXLmed — Audit Readiness for FDA QMSR / ISO 13485</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -226,7 +226,7 @@ footer{padding:2.5rem 3rem;border-top:1px solid var(--border)}
         </ul>
       </div>
       <div class="why-col good">
-        <h4>ZEXL med approach</h4>
+        <h4>ZEXLmed approach</h4>
         <ul>
           <li>Every verdict linked to extracted evidence</li>
           <li>Deterministic — same input, same output</li>
@@ -393,7 +393,7 @@ footer{padding:2.5rem 3rem;border-top:1px solid var(--border)}
     </div>
   </div>
   <div class="footer-bottom">
-    ZEXL med is a structured finding system for audit-readiness evaluation. Outputs are intended to support human QA/RA review workflows — not to constitute regulatory compliance determinations. No PHI is processed. US medical device market focus. &nbsp;&middot;&nbsp; zexlmed.com
+    ZEXLmed is a structured finding system for audit-readiness evaluation. Outputs are intended to support human QA/RA review workflows — not to constitute regulatory compliance determinations. No PHI is processed. US medical device market focus. &nbsp;&middot;&nbsp; zexlmed.com
   </div>
   <div style="margin-top:1.25rem;display:flex;gap:1.5rem;flex-wrap:wrap">
     <a href="legal/tos.html" style="font-size:0.72rem;color:var(--text-muted);font-family:var(--mono);text-decoration:none;transition:color 0.2s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-muted)'">Terms of Service</a>
@@ -405,10 +405,17 @@ footer{padding:2.5rem 3rem;border-top:1px solid var(--border)}
 <div id="toast"></div>
 
 <script>
-const _existingKey = localStorage.getItem('zexl_api_key');
-const _forceHome = new URLSearchParams(window.location.search).get('home');
-if (_existingKey && !_forceHome) {
-  window.location.href = 'app.html';
+const _cachedKey = localStorage.getItem('zexl_api_key');
+if (_cachedKey) {
+  var _cachedInvite = localStorage.getItem('zexl_invite_code');
+  if (_cachedInvite) document.getElementById('invite-input').value = _cachedInvite;
+  var _continueBtn = document.createElement('button');
+  _continueBtn.textContent = 'Continue to Sandbox →';
+  _continueBtn.className = 'btn-form';
+  _continueBtn.style.marginTop = '12px';
+  _continueBtn.onclick = function() { window.location.href = 'app.html'; };
+  var _accessForm = document.getElementById('access');
+  if (_accessForm) _accessForm.appendChild(_continueBtn);
 }
 function showToast(msg,ok){
   var t=document.getElementById('toast');
@@ -435,6 +442,7 @@ async function redeemInvite(){
     var d=await r.json();
     if(r.ok){
       localStorage.setItem('zexl_api_key', d.api_key);
+      localStorage.setItem('zexl_invite_code', code);
       window.location.href = 'app.html';
     }
     else showToast(d.detail||'Invalid or expired invite code',false);
