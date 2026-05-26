@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZEXLmed — Expert Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0a1628;--navy-mid:#112240;--card-bg:#0f1f35;--border:#1e3a5f;
+  --accent:#2eb89a;--text-primary:#e8edf2;--text-secondary:#8a9bb0;--text-muted:#5a6e82;
+  --serif:'DM Serif Display',Georgia,serif;--mono:'DM Mono',monospace;--sans:'Instrument Sans',sans-serif;
+  --green:#2eb89a;--yellow:#d4a843;--orange:#e07a3a;--red:#e05252;
+}
+body{background:var(--navy);color:var(--text-primary);font-family:var(--sans);font-size:15px;line-height:1.6;min-height:100vh;padding:1.5rem 1rem 3rem}
+.wrap{max-width:600px;margin:0 auto}
+.brand{font-family:var(--mono);font-size:0.85rem;color:var(--accent);letter-spacing:0.06em;margin-bottom:1.5rem}
+.brand span{color:var(--text-muted);font-weight:400}
+.header{background:var(--card-bg);border:1px solid var(--border);border-radius:6px;padding:1.25rem 1.5rem;margin-bottom:1.25rem}
+.header h1{font-family:var(--serif);font-size:1.35rem;font-weight:300;margin-bottom:0.35rem}
+.header .meta{font-size:0.85rem;color:var(--text-secondary)}
+.header .meta strong{color:var(--text-primary)}
+.card{background:var(--card-bg);border:1px solid var(--border);border-radius:6px;padding:1.15rem 1.25rem;margin-bottom:1rem}
+.card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:0.75rem;margin-bottom:0.75rem;flex-wrap:wrap}
+.clause-id{font-family:var(--mono);font-size:0.8rem;color:var(--accent)}
+.clause-title{font-size:0.9rem;color:var(--text-secondary);margin-top:0.2rem}
+.badge{display:inline-block;font-family:var(--mono);font-size:0.68rem;font-weight:500;letter-spacing:0.04em;padding:0.25rem 0.55rem;border-radius:3px;text-transform:uppercase}
+.badge.COMPLIANT{background:rgba(46,184,154,0.15);color:var(--green);border:1px solid rgba(46,184,154,0.35)}
+.badge.MINOR_GAP{background:rgba(212,168,67,0.15);color:var(--yellow);border:1px solid rgba(212,168,67,0.35)}
+.badge.NOT_COMPLIANT{background:rgba(224,122,58,0.15);color:var(--orange);border:1px solid rgba(224,122,58,0.35)}
+.badge.CRITICAL_FINDING{background:rgba(224,82,82,0.15);color:var(--red);border:1px solid rgba(224,82,82,0.35)}
+.evidence{background:rgba(10,22,40,0.6);border:1px solid var(--border);border-radius:4px;padding:0.75rem 0.9rem;margin-bottom:0.9rem;font-size:0.82rem;color:var(--text-muted)}
+.evidence p{margin-bottom:0.35rem}
+.evidence p:last-child{margin-bottom:0}
+.actions{display:flex;gap:0.6rem;flex-wrap:wrap}
+.btn{border-radius:4px;font-family:var(--sans);font-size:0.82rem;font-weight:600;padding:0.5rem 1rem;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-secondary);transition:all 0.15s}
+.btn:hover{border-color:var(--text-muted);color:var(--text-primary)}
+.btn.agree.active{background:rgba(46,184,154,0.2);border-color:var(--accent);color:var(--accent)}
+.btn.disagree.active{background:rgba(224,82,82,0.12);border-color:var(--red);color:var(--red)}
+.disagree-panel{display:none;margin-top:0.9rem;padding-top:0.9rem;border-top:1px solid var(--border)}
+.disagree-panel.open{display:block}
+.disagree-panel label{display:block;font-size:0.75rem;color:var(--text-muted);margin-bottom:0.35rem;text-transform:uppercase;letter-spacing:0.06em}
+.disagree-panel select,.disagree-panel textarea{width:100%;background:var(--navy-mid);border:1px solid var(--border);color:var(--text-primary);border-radius:4px;padding:0.55rem 0.65rem;font-family:var(--sans);font-size:0.88rem;margin-bottom:0.65rem}
+.disagree-panel textarea{min-height:72px;resize:vertical}
+.submit-wrap{margin-top:1.5rem;text-align:center}
+.submit-btn{background:var(--accent);color:var(--navy);border:none;padding:0.85rem 2rem;border-radius:4px;font-family:var(--sans);font-size:0.95rem;font-weight:600;cursor:pointer;letter-spacing:0.03em;width:100%;max-width:320px}
+.submit-btn:disabled{opacity:0.35;cursor:not-allowed}
+.submit-btn:not(:disabled):hover{background:#35cead}
+.status-msg{text-align:center;padding:2rem 1rem;color:var(--text-secondary)}
+.status-msg.error{color:var(--red)}
+.thankyou{text-align:center;padding:3rem 1rem}
+.thankyou h2{font-family:var(--serif);font-size:1.5rem;font-weight:300;color:var(--accent);margin-bottom:0.5rem}
+.thankyou p{color:var(--text-secondary);font-size:0.95rem}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">ZEXL<span>med</span> · Expert Review</div>
+  <div id="loading" class="status-msg">Loading review data…</div>
+  <div id="error" class="status-msg error hidden"></div>
+  <div id="review-app" class="hidden">
+    <div class="header">
+      <h1 id="file-name">—</h1>
+      <div class="meta">Reviewer: <strong id="reviewer-name">—</strong></div>
+    </div>
+    <div id="clauses"></div>
+    <div class="submit-wrap">
+      <button id="submit-btn" class="submit-btn" disabled>Submit Review</button>
+    </div>
+  </div>
+  <div id="thankyou" class="thankyou hidden">
+    <h2>Thank you, Dr. El Mubarak.</h2>
+    <p>Your review has been recorded.</p>
+  </div>
+</div>
+<script>
+(function () {
+  const API_BASE = (function () {
+    if (window.location.hostname.includes('railway.app')) return window.location.origin;
+    return 'https://zexl-med-core-production.up.railway.app';
+  })();
+
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('token') || '';
+  const reportId = params.get('report_id') || '';
+
+  const loadingEl = document.getElementById('loading');
+  const errorEl = document.getElementById('error');
+  const appEl = document.getElementById('review-app');
+  const thankyouEl = document.getElementById('thankyou');
+  const clausesEl = document.getElementById('clauses');
+  const submitBtn = document.getElementById('submit-btn');
+
+  const VERDICTS = ['COMPLIANT', 'MINOR_GAP', 'NOT_COMPLIANT', 'CRITICAL_FINDING'];
+  const state = { clauses: [], choices: {} };
+
+  function showError(msg) {
+    loadingEl.classList.add('hidden');
+    errorEl.textContent = msg;
+    errorEl.classList.remove('hidden');
+  }
+
+  function verdictLabel(v) {
+    return (v || '').replace(/_/g, ' ');
+  }
+
+  function allAnswered() {
+    return state.clauses.length > 0 && state.clauses.every(function (c) {
+      const ch = state.choices[c.clause_id];
+      return ch && (ch.agreement === true || ch.agreement === false);
+    });
+  }
+
+  function updateSubmit() {
+    submitBtn.disabled = !allAnswered();
+  }
+
+  function renderCard(clause) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.clauseId = clause.clause_id;
+
+    const evidenceHtml = (clause.evidence_sentences || []).length
+      ? clause.evidence_sentences.map(function (s) { return '<p>' + escapeHtml(s) + '</p>'; }).join('')
+      : '<p>No evidence snippets recorded.</p>';
+
+    card.innerHTML =
+      '<div class="card-head">' +
+        '<div><div class="clause-id">Clause ' + escapeHtml(clause.clause_id) + '</div>' +
+        '<div class="clause-title">' + escapeHtml(clause.clause_title || '') + '</div></div>' +
+        '<span class="badge ' + escapeHtml(clause.engine_verdict) + '">' + verdictLabel(clause.engine_verdict) + '</span>' +
+      '</div>' +
+      '<div class="evidence">' + evidenceHtml + '</div>' +
+      '<div class="actions">' +
+        '<button type="button" class="btn agree" data-action="agree">✓ Agree</button>' +
+        '<button type="button" class="btn disagree" data-action="disagree">✗ Disagree</button>' +
+      '</div>' +
+      '<div class="disagree-panel">' +
+        '<label for="verdict-' + escapeHtml(clause.clause_id) + '">Your verdict</label>' +
+        '<select id="verdict-' + escapeHtml(clause.clause_id) + '">' +
+          VERDICTS.map(function (v) {
+            return '<option value="' + v + '">' + verdictLabel(v) + '</option>';
+          }).join('') +
+        '</select>' +
+        '<label for="comment-' + escapeHtml(clause.clause_id) + '">Comment</label>' +
+        '<textarea id="comment-' + escapeHtml(clause.clause_id) + '" placeholder="Optional: why do you disagree?"></textarea>' +
+      '</div>';
+
+    const agreeBtn = card.querySelector('[data-action="agree"]');
+    const disagreeBtn = card.querySelector('[data-action="disagree"]');
+    const panel = card.querySelector('.disagree-panel');
+    const select = card.querySelector('select');
+    const textarea = card.querySelector('textarea');
+
+    agreeBtn.addEventListener('click', function () {
+      agreeBtn.classList.add('active');
+      disagreeBtn.classList.remove('active');
+      panel.classList.remove('open');
+      state.choices[clause.clause_id] = { agreement: true, expert_verdict: null, expert_comment: null };
+      updateSubmit();
+    });
+
+    disagreeBtn.addEventListener('click', function () {
+      disagreeBtn.classList.add('active');
+      agreeBtn.classList.remove('active');
+      panel.classList.add('open');
+      state.choices[clause.clause_id] = {
+        agreement: false,
+        expert_verdict: select.value,
+        expert_comment: textarea.value.trim() || null
+      };
+      updateSubmit();
+    });
+
+    select.addEventListener('change', function () {
+      if (disagreeBtn.classList.contains('active')) {
+        state.choices[clause.clause_id] = {
+          agreement: false,
+          expert_verdict: select.value,
+          expert_comment: textarea.value.trim() || null
+        };
+      }
+    });
+
+    textarea.addEventListener('input', function () {
+      if (disagreeBtn.classList.contains('active')) {
+        state.choices[clause.clause_id] = {
+          agreement: false,
+          expert_verdict: select.value,
+          expert_comment: textarea.value.trim() || null
+        };
+      }
+    });
+
+    return card;
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  async function loadData() {
+    if (!token) {
+      showError('Missing review token. Please use the link provided to you.');
+      return;
+    }
+    const url = API_BASE + '/review-data?token=' + encodeURIComponent(token);
+    const res = await fetch(url);
+    if (!res.ok) {
+      const body = await res.json().catch(function () { return {}; });
+      showError(body.detail || 'Unable to load review data.');
+      return;
+    }
+    const data = await res.json();
+    loadingEl.classList.add('hidden');
+    appEl.classList.remove('hidden');
+    document.getElementById('file-name').textContent = data.file_name || 'Document';
+    document.getElementById('reviewer-name').textContent = data.reviewer_name || 'Expert';
+    state.clauses = data.clauses || [];
+    state.clauses.forEach(function (clause) {
+      clausesEl.appendChild(renderCard(clause));
+    });
+    updateSubmit();
+  }
+
+  submitBtn.addEventListener('click', async function () {
+    if (!allAnswered()) return;
+    submitBtn.disabled = true;
+    const reviews = state.clauses.map(function (c) {
+      const ch = state.choices[c.clause_id];
+      return {
+        clause_id: c.clause_id,
+        agreement: ch.agreement,
+        expert_verdict: ch.agreement ? null : ch.expert_verdict,
+        expert_comment: ch.agreement ? null : ch.expert_comment
+      };
+    });
+    const res = await fetch(API_BASE + '/submit-review', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: token, reviews: reviews })
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(function () { return {}; });
+      showError(body.detail || 'Submit failed. Please try again.');
+      submitBtn.disabled = false;
+      return;
+    }
+    appEl.classList.add('hidden');
+    thankyouEl.classList.remove('hidden');
+  });
+
+  loadData().catch(function () {
+    showError('Network error. Please check your connection and try again.');
+  });
+})();
+</script>
+</body>
+</html>
