@@ -72,7 +72,7 @@ body{background:var(--navy);color:var(--text-primary);font-family:var(--sans);fo
     </div>
   </div>
   <div id="thankyou" class="thankyou hidden">
-    <h2>Thank you, Dr. El Mubarak.</h2>
+    <h2 id="thankyou-title">Thank you.</h2>
     <p>Your review has been recorded.</p>
   </div>
 </div>
@@ -95,7 +95,7 @@ body{background:var(--navy);color:var(--text-primary);font-family:var(--sans);fo
   const submitBtn = document.getElementById('submit-btn');
 
   const VERDICTS = ['COMPLIANT', 'MINOR_GAP', 'NOT_COMPLIANT', 'CRITICAL_FINDING'];
-  const state = { clauses: [], choices: {} };
+  const state = { clauses: [], choices: {}, reviewerName: '' };
 
   function showError(msg) {
     loadingEl.classList.add('hidden');
@@ -198,6 +198,14 @@ body{background:var(--navy);color:var(--text-primary);font-family:var(--sans);fo
     return card;
   }
 
+  function thankYouTitle(name) {
+    const trimmed = (name || '').trim();
+    if (trimmed) {
+      return 'Thank you, ' + trimmed + '.';
+    }
+    return 'Thank you.';
+  }
+
   function escapeHtml(s) {
     return String(s)
       .replace(/&/g, '&amp;')
@@ -223,6 +231,7 @@ body{background:var(--navy);color:var(--text-primary);font-family:var(--sans);fo
     appEl.classList.remove('hidden');
     document.getElementById('file-name').textContent = data.file_name || 'Document';
     document.getElementById('reviewer-name').textContent = data.reviewer_name || 'Expert';
+    state.reviewerName = data.reviewer_name || '';
     state.clauses = data.clauses || [];
     state.clauses.forEach(function (clause) {
       clausesEl.appendChild(renderCard(clause));
@@ -254,6 +263,7 @@ body{background:var(--navy);color:var(--text-primary);font-family:var(--sans);fo
       return;
     }
     appEl.classList.add('hidden');
+    document.getElementById('thankyou-title').textContent = thankYouTitle(state.reviewerName);
     thankyouEl.classList.remove('hidden');
   });
 
