@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZEXLmed — Admin Dashboard</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --dark-bg:#0D1B2A;--navy-mid:#112240;--card-bg:#0f1f35;--border:#1e3a5f;
+  --teal:#00C9A7;--text-primary:#e8edf2;--text-secondary:#8a9bb0;--text-muted:#5a6e82;
+  --green:#00C9A7;--yellow:#d4a843;--orange:#e07a3a;--red:#e05252;
+  --serif:Georgia,'Times New Roman',serif;--mono:'Courier New',Consolas,monospace;--sans:system-ui,-apple-system,sans-serif;
+}
+body{background:var(--dark-bg);color:var(--text-primary);font-family:var(--sans);font-size:14px;line-height:1.5;min-height:100vh}
+.hidden{display:none!important}
+.wrap{max-width:1200px;margin:0 auto;padding:1.5rem 2rem 3rem}
+.brand{font-family:var(--mono);font-size:0.85rem;color:var(--teal);letter-spacing:0.06em;margin-bottom:1.25rem}
+.brand span{color:var(--text-muted);font-weight:400}
+
+/* Auth */
+.auth-card{max-width:420px;margin:4rem auto;background:var(--card-bg);border:1px solid var(--border);border-radius:6px;padding:2rem}
+.auth-card h1{font-family:var(--serif);font-size:1.5rem;font-weight:400;margin-bottom:0.35rem;color:var(--teal)}
+.auth-card p{font-size:0.85rem;color:var(--text-secondary);margin-bottom:1.25rem}
+.field{margin-bottom:1rem}
+.field label{display:block;font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.35rem}
+.field input{width:100%;background:var(--navy-mid);border:1px solid var(--border);color:var(--text-primary);border-radius:4px;padding:0.6rem 0.75rem;font-family:var(--mono);font-size:0.85rem}
+.field input:focus{outline:none;border-color:var(--teal)}
+.btn-primary{background:var(--teal);color:var(--dark-bg);border:none;border-radius:4px;padding:0.65rem 1.25rem;font-weight:600;cursor:pointer;width:100%;font-size:0.9rem}
+.btn-primary:hover{filter:brightness(1.08)}
+.btn-primary:disabled{opacity:0.4;cursor:not-allowed}
+.auth-error{color:var(--red);font-size:0.85rem;margin-top:0.75rem;text-align:center}
+
+/* Dashboard header */
+.dash-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:0.75rem}
+.dash-head h1{font-family:var(--serif);font-size:1.35rem;font-weight:400}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text-secondary);border-radius:4px;padding:0.4rem 0.85rem;font-size:0.8rem;cursor:pointer}
+.btn-ghost:hover{border-color:var(--teal);color:var(--teal)}
+
+/* Tabs */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:1.25rem}
+.tab-btn{background:transparent;border:none;color:var(--text-muted);padding:0.65rem 1.25rem;font-size:0.85rem;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab-btn:hover{color:var(--text-primary)}
+.tab-btn.active{color:var(--teal);border-bottom-color:var(--teal)}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+.tab-toolbar{display:flex;justify-content:flex-end;margin-bottom:0.75rem}
+
+/* Cards */
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.25rem}
+.card-stat{background:var(--card-bg);border:1px solid var(--border);border-radius:6px;padding:1rem 1.15rem}
+.card-stat .label{font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.35rem}
+.card-stat .value{font-family:var(--mono);font-size:1.6rem;color:var(--teal)}
+.card-stat .sub{font-size:0.8rem;color:var(--text-secondary);margin-top:0.35rem}
+.verdict-badges{display:flex;flex-wrap:wrap;gap:0.35rem;margin-top:0.5rem}
+
+/* Hero accuracy */
+.accuracy-hero{text-align:center;padding:1.5rem;background:var(--card-bg);border:1px solid var(--border);border-radius:6px;margin-bottom:1.25rem}
+.accuracy-hero .pct{font-family:var(--mono);font-size:3rem;color:var(--teal);line-height:1}
+.accuracy-hero .meta{font-size:0.9rem;color:var(--text-secondary);margin-top:0.35rem}
+
+/* Tables */
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:6px;margin-bottom:1.25rem}
+table{width:100%;border-collapse:collapse;font-size:0.82rem}
+thead th{background:var(--navy-mid);color:var(--text-muted);font-weight:600;text-align:left;padding:0.6rem 0.75rem;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;border-bottom:1px solid var(--border)}
+tbody tr:nth-child(even){background:rgba(15,31,53,0.5)}
+tbody td{padding:0.55rem 0.75rem;border-bottom:1px solid rgba(30,58,95,0.4);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+.section-title{font-size:0.85rem;font-weight:600;color:var(--text-secondary);margin:1rem 0 0.5rem;text-transform:uppercase;letter-spacing:0.05em}
+
+/* Badges */
+.badge{display:inline-block;font-family:var(--mono);font-size:0.65rem;font-weight:600;letter-spacing:0.04em;padding:0.2rem 0.5rem;border-radius:3px;text-transform:uppercase}
+.badge.COMPLIANT{background:rgba(0,201,167,0.15);color:var(--green);border:1px solid rgba(0,201,167,0.35)}
+.badge.MINOR_GAP{background:rgba(212,168,67,0.15);color:var(--yellow);border:1px solid rgba(212,168,67,0.35)}
+.badge.NOT_COMPLIANT{background:rgba(224,122,58,0.15);color:var(--orange);border:1px solid rgba(224,122,58,0.35)}
+.badge.CRITICAL_FINDING{background:rgba(224,82,82,0.15);color:var(--red);border:1px solid rgba(224,82,82,0.35)}
+.acc-low{color:var(--red);font-weight:600}
+.acc-mid{color:var(--yellow);font-weight:600}
+.acc-high{color:var(--green);font-weight:600}
+
+/* Buttons in tables */
+.btn-sm{background:transparent;border:1px solid var(--border);color:var(--text-secondary);border-radius:3px;padding:0.3rem 0.6rem;font-size:0.75rem;cursor:pointer;white-space:nowrap}
+.btn-sm:hover{border-color:var(--teal);color:var(--teal)}
+.btn-sm.copied{border-color:var(--green);color:var(--green)}
+.link-preview{font-family:var(--mono);font-size:0.68rem;color:var(--text-muted);margin-left:0.4rem;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle}
+
+/* Filters */
+.filters{display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:1rem;align-items:flex-end}
+.filters label{font-size:0.72rem;color:var(--text-muted);display:block;margin-bottom:0.25rem}
+.filters select,.filters input{background:var(--navy-mid);border:1px solid var(--border);color:var(--text-primary);border-radius:4px;padding:0.45rem 0.6rem;font-size:0.82rem}
+
+/* Loading / error */
+.status{padding:2rem;text-align:center;color:var(--text-secondary)}
+.status.error{color:var(--red)}
+.spinner{display:inline-block;width:22px;height:22px;border:2px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:0.5rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Modal */
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:200;display:flex;align-items:center;justify-content:center;padding:1.5rem}
+.modal{background:var(--card-bg);border:1px solid var(--border);border-radius:6px;max-width:720px;width:100%;max-height:85vh;overflow:hidden;display:flex;flex-direction:column}
+.modal-head{display:flex;justify-content:space-between;align-items:center;padding:1rem 1.25rem;border-bottom:1px solid var(--border)}
+.modal-head h2{font-family:var(--serif);font-size:1.15rem;font-weight:400}
+.modal-close{background:none;border:none;color:var(--text-muted);font-size:1.25rem;cursor:pointer;line-height:1}
+.modal-body{padding:1rem 1.25rem;overflow-y:auto}
+.evidence-snippet{font-size:0.78rem;color:var(--text-muted);margin-top:0.25rem}
+.evidence-snippet p{margin-bottom:0.2rem}
+</style>
+</head>
+<body>
+<div id="auth-screen" class="wrap">
+  <div class="brand">ZEXL<span>med</span> · Admin</div>
+  <div class="auth-card">
+    <h1>Admin Dashboard</h1>
+    <p>Enter your Admin API key to access operational metrics.</p>
+    <div class="field">
+      <label for="api-key-input">Admin API Key</label>
+      <input id="api-key-input" type="password" placeholder="X-API-Key" autocomplete="off">
+    </div>
+    <button id="auth-btn" class="btn-primary" type="button">Sign in</button>
+    <div id="auth-error" class="auth-error hidden">Invalid API key</div>
+  </div>
+</div>
+
+<div id="dashboard" class="wrap hidden">
+  <div class="dash-head">
+    <div>
+      <div class="brand">ZEXL<span>med</span> · Admin Dashboard</div>
+      <h1>Operations</h1>
+    </div>
+    <button id="sign-out-btn" class="btn-ghost" type="button">Sign out</button>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab-btn active" data-tab="overview" type="button">Overview</button>
+    <button class="tab-btn" data-tab="expert" type="button">Expert Reviews</button>
+    <button class="tab-btn" data-tab="evaluations" type="button">Evaluations</button>
+  </div>
+
+  <!-- Tab 1: Overview -->
+  <div id="tab-overview" class="tab-panel active">
+    <div class="tab-toolbar"><button class="btn-ghost refresh-btn" data-tab="overview" type="button">↻ Refresh</button></div>
+    <div id="overview-status" class="status hidden"></div>
+    <div id="overview-content" class="hidden">
+      <div class="cards" id="overview-cards"></div>
+      <div class="section-title">Recent evaluations (10)</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Date / time</th><th>File name</th><th>Verdict</th><th>User email</th><th>Review link</th>
+          </tr></thead>
+          <tbody id="overview-recent-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 2: Expert Reviews -->
+  <div id="tab-expert" class="tab-panel">
+    <div class="tab-toolbar"><button class="btn-ghost refresh-btn" data-tab="expert" type="button">↻ Refresh</button></div>
+    <div id="expert-status" class="status hidden"></div>
+    <div id="expert-content" class="hidden">
+      <div class="accuracy-hero" id="expert-hero"></div>
+      <div class="section-title">Reviewers</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Name</th><th>Email</th><th>Reviews</th><th>Accuracy</th></tr></thead>
+          <tbody id="expert-reviewers-tbody"></tbody>
+        </table>
+      </div>
+      <div class="section-title">Clause agreement rate</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Clause</th><th>Total reviewed</th><th>Agreed</th><th>Accuracy</th></tr></thead>
+          <tbody id="expert-clauses-tbody"></tbody>
+        </table>
+      </div>
+      <div class="section-title">Disagreements</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>File name</th><th>Clause</th><th>Engine</th><th>Expert</th><th>Comment</th></tr></thead>
+          <tbody id="expert-disagreements-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 3: Evaluations -->
+  <div id="tab-evaluations" class="tab-panel">
+    <div class="tab-toolbar"><button class="btn-ghost refresh-btn" data-tab="evaluations" type="button">↻ Refresh</button></div>
+    <div id="evaluations-status" class="status hidden"></div>
+    <div id="evaluations-content" class="hidden">
+      <div class="filters">
+        <div>
+          <label for="filter-verdict">Verdict</label>
+          <select id="filter-verdict">
+            <option value="">All</option>
+            <option value="COMPLIANT">COMPLIANT</option>
+            <option value="MINOR_GAP">MINOR_GAP</option>
+            <option value="NOT_COMPLIANT">NOT_COMPLIANT</option>
+            <option value="CRITICAL_FINDING">CRITICAL_FINDING</option>
+          </select>
+        </div>
+        <div>
+          <label for="filter-date-from">From</label>
+          <input id="filter-date-from" type="date">
+        </div>
+        <div>
+          <label for="filter-date-to">To</label>
+          <input id="filter-date-to" type="date">
+        </div>
+        <div><button id="apply-filters-btn" class="btn-sm" type="button">Apply filters</button></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Date</th><th>File name</th><th>Verdict</th><th>User</th><th>Clauses</th><th>Actions</th>
+          </tr></thead>
+          <tbody id="evaluations-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="modal-backdrop" class="modal-backdrop hidden">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <h2 id="modal-title">Evaluation detail</h2>
+      <button id="modal-close" class="modal-close" type="button" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const API_BASE = (function () {
+    if (window.location.hostname.includes('railway.app')) return window.location.origin;
+    return 'https://zexl-med-core-production.up.railway.app';
+  })();
+
+  const VERDICTS = ['COMPLIANT', 'MINOR_GAP', 'NOT_COMPLIANT', 'CRITICAL_FINDING'];
+  let apiKey = '';
+  let summaryCache = null;
+  let expertsCache = null;
+
+  const authScreen = document.getElementById('auth-screen');
+  const dashboard = document.getElementById('dashboard');
+  const apiKeyInput = document.getElementById('api-key-input');
+  const authBtn = document.getElementById('auth-btn');
+  const authError = document.getElementById('auth-error');
+
+  function headers() {
+    return { 'X-API-Key': apiKey, 'Content-Type': 'application/json' };
+  }
+
+  async function apiFetch(path, options) {
+    const opts = options || {};
+    opts.headers = Object.assign({}, headers(), opts.headers || {});
+    const res = await fetch(API_BASE + path, opts);
+    return res;
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function verdictBadge(v) {
+    const key = v || 'UNKNOWN';
+    const cls = VERDICTS.indexOf(key) >= 0 ? key : '';
+    return '<span class="badge ' + escapeHtml(cls) + '">' + escapeHtml((key || '—').replace(/_/g, ' ')) + '</span>';
+  }
+
+  function formatDateTime(iso) {
+    if (!iso) return '—';
+    try {
+      const d = new Date(iso);
+      return d.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+    } catch (e) {
+      return iso;
+    }
+  }
+
+  function formatDateOnly(iso) {
+    if (!iso) return '';
+    try {
+      return new Date(iso).toISOString().slice(0, 10);
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function accuracyClass(pct) {
+    if (pct < 80) return 'acc-low';
+    if (pct < 95) return 'acc-mid';
+    return 'acc-high';
+  }
+
+  function showAuthError(show) {
+    authError.classList.toggle('hidden', !show);
+  }
+
+  async function verifyAndEnter() {
+    const key = apiKeyInput.value.trim();
+    if (!key) return;
+    authBtn.disabled = true;
+    showAuthError(false);
+    apiKey = key;
+    const res = await apiFetch('/admin/validation-summary');
+    if (!res.ok) {
+      apiKey = '';
+      showAuthError(true);
+      authBtn.disabled = false;
+      return;
+    }
+    summaryCache = await res.json();
+    authScreen.classList.add('hidden');
+    dashboard.classList.remove('hidden');
+    authBtn.disabled = false;
+    loadTab('overview');
+  }
+
+  function signOut() {
+    apiKey = '';
+    summaryCache = null;
+    expertsCache = null;
+    apiKeyInput.value = '';
+    dashboard.classList.add('hidden');
+    authScreen.classList.remove('hidden');
+    showAuthError(false);
+  }
+
+  function setTabStatus(tab, loading, errorMsg) {
+    const statusEl = document.getElementById(tab + '-status');
+    const contentEl = document.getElementById(tab + '-content');
+    statusEl.classList.remove('hidden', 'error');
+    contentEl.classList.add('hidden');
+    if (loading) {
+      statusEl.innerHTML = '<span class="spinner"></span>Loading…';
+      return;
+    }
+    if (errorMsg) {
+      statusEl.classList.add('error');
+      statusEl.textContent = errorMsg;
+      return;
+    }
+    statusEl.classList.add('hidden');
+    contentEl.classList.remove('hidden');
+  }
+
+  function avgProcessingMs(evaluations) {
+    if (!evaluations || !evaluations.length) return 0;
+    const sum = evaluations.reduce(function (s, e) { return s + (e.processing_ms || 0); }, 0);
+    return Math.round(sum / evaluations.length);
+  }
+
+  function renderOverviewCards(data) {
+    const byVerdict = data.by_verdict || {};
+    const badges = VERDICTS.map(function (v) {
+      const n = byVerdict[v] || 0;
+      return verdictBadge(v) + ' <span style="color:var(--text-primary);margin-left:0.2rem">' + n + '</span>';
+    }).join(' ');
+    document.getElementById('overview-cards').innerHTML =
+      '<div class="card-stat"><div class="label">Total evaluations</div><div class="value">' + (data.total_evaluations || 0) + '</div></div>' +
+      '<div class="card-stat"><div class="label">Unique users</div><div class="value">' + (data.unique_users || 0) + '</div></div>' +
+      '<div class="card-stat"><div class="label">Verdict distribution</div><div class="sub verdict-badges">' + badges + '</div></div>' +
+      '<div class="card-stat"><div class="label">Avg processing time</div><div class="value">' + avgProcessingMs(data.evaluations || []) + '</div><div class="sub">ms</div></div>';
+  }
+
+  function reviewLinkCell(reportId, userEmail) {
+    const email = userEmail || '';
+    return '<button type="button" class="btn-sm gen-link-btn" data-report-id="' + escapeHtml(reportId) + '" data-email="' + escapeHtml(email) + '">Generate link</button><span class="link-preview hidden"></span>';
+  }
+
+  function renderOverviewRecent(data) {
+    const tbody = document.getElementById('overview-recent-tbody');
+    const rows = (data.evaluations || []).slice(0, 10);
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="5">No evaluations yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(function (e) {
+      return '<tr>' +
+        '<td>' + escapeHtml(formatDateTime(e.created_at)) + '</td>' +
+        '<td>' + escapeHtml(e.file_name || e.report_id || '—') + '</td>' +
+        '<td>' + verdictBadge(e.decision) + '</td>' +
+        '<td>' + escapeHtml(e.user_email || '—') + '</td>' +
+        '<td>' + reviewLinkCell(e.report_id, e.user_email) + '</td>' +
+        '</tr>';
+    }).join('');
+    bindLinkButtons(tbody);
+  }
+
+  async function loadOverview() {
+    setTabStatus('overview', true);
+    try {
+      const res = await apiFetch('/admin/validation-summary');
+      if (!res.ok) throw new Error('Failed to load validation summary');
+      summaryCache = await res.json();
+      renderOverviewCards(summaryCache);
+      renderOverviewRecent(summaryCache);
+      setTabStatus('overview', false);
+    } catch (err) {
+      setTabStatus('overview', false, err.message || 'Error loading data');
+    }
+  }
+
+  function renderExpertHero(data) {
+    document.getElementById('expert-hero').innerHTML =
+      '<div class="pct">' + (data.accuracy_pct != null ? data.accuracy_pct : 0) + '%</div>' +
+      '<div class="meta">' + (data.agreement_count || 0) + ' agreements / ' + (data.total_reviews || 0) + ' total reviews</div>';
+  }
+
+  function renderExpertReviewers(data, experts) {
+    const emailByName = {};
+    (experts || []).forEach(function (ex) {
+      emailByName[ex.name] = ex.email;
+    });
+    const tbody = document.getElementById('expert-reviewers-tbody');
+    const byExpert = data.by_expert || {};
+    const names = Object.keys(byExpert).sort();
+    if (!names.length) {
+      tbody.innerHTML = '<tr><td colspan="4">No expert reviews yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = names.map(function (name) {
+      const row = byExpert[name];
+      const pct = row.accuracy_pct != null ? row.accuracy_pct : 0;
+      return '<tr>' +
+        '<td>' + escapeHtml(name) + '</td>' +
+        '<td>' + escapeHtml(emailByName[name] || '—') + '</td>' +
+        '<td>' + (row.total || 0) + '</td>' +
+        '<td class="' + accuracyClass(pct) + '">' + pct + '%</td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  function renderExpertClauses(data) {
+    const tbody = document.getElementById('expert-clauses-tbody');
+    const byClause = data.by_clause || {};
+    const clauses = Object.keys(byClause).sort();
+    if (!clauses.length) {
+      tbody.innerHTML = '<tr><td colspan="4">No clause reviews yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = clauses.map(function (clause) {
+      const row = byClause[clause];
+      const pct = row.accuracy_pct != null ? row.accuracy_pct : 0;
+      return '<tr>' +
+        '<td>' + escapeHtml(clause) + '</td>' +
+        '<td>' + (row.total || 0) + '</td>' +
+        '<td>' + (row.agreed || 0) + '</td>' +
+        '<td class="' + accuracyClass(pct) + '">' + pct + '%</td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  function renderExpertDisagreements(data) {
+    const tbody = document.getElementById('expert-disagreements-tbody');
+    const rows = data.disagreements || [];
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="5">No disagreements.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(function (d) {
+      return '<tr>' +
+        '<td>' + escapeHtml(d.file_name || d.report_id || '—') + '</td>' +
+        '<td>' + escapeHtml(d.clause_id) + '</td>' +
+        '<td>' + verdictBadge(d.engine_verdict) + '</td>' +
+        '<td>' + verdictBadge(d.expert_verdict) + '</td>' +
+        '<td>' + escapeHtml(d.expert_comment || '—') + '</td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  async function loadExpert() {
+    setTabStatus('expert', true);
+    try {
+      const [reportRes, expertsRes] = await Promise.all([
+        apiFetch('/admin/accuracy-report'),
+        apiFetch('/admin/experts')
+      ]);
+      if (!reportRes.ok) throw new Error('Failed to load accuracy report');
+      const data = await reportRes.json();
+      expertsCache = expertsRes.ok ? (await expertsRes.json()).experts : [];
+      renderExpertHero(data);
+      renderExpertReviewers(data, expertsCache);
+      renderExpertClauses(data);
+      renderExpertDisagreements(data);
+      setTabStatus('expert', false);
+    } catch (err) {
+      setTabStatus('expert', false, err.message || 'Error loading data');
+    }
+  }
+
+  function filteredEvaluations() {
+    if (!summaryCache) return [];
+    const verdict = document.getElementById('filter-verdict').value;
+    const from = document.getElementById('filter-date-from').value;
+    const to = document.getElementById('filter-date-to').value;
+    return (summaryCache.evaluations || []).filter(function (e) {
+      if (verdict && e.decision !== verdict) return false;
+      const d = formatDateOnly(e.created_at);
+      if (from && d < from) return false;
+      if (to && d > to) return false;
+      return true;
+    });
+  }
+
+  function renderEvaluationsTable() {
+    const tbody = document.getElementById('evaluations-tbody');
+    const rows = filteredEvaluations();
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="6">No evaluations match filters.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(function (e) {
+      const clauseCount = e.total_clauses_checked != null ? e.total_clauses_checked : (e.triggered_clauses || []).length;
+      return '<tr>' +
+        '<td>' + escapeHtml(formatDateTime(e.created_at)) + '</td>' +
+        '<td>' + escapeHtml(e.file_name || e.report_id || '—') + '</td>' +
+        '<td>' + verdictBadge(e.decision) + '</td>' +
+        '<td>' + escapeHtml(e.user_email || '—') + '</td>' +
+        '<td>' + clauseCount + '</td>' +
+        '<td>' +
+          '<button type="button" class="btn-sm detail-btn" data-report-id="' + escapeHtml(e.report_id) + '">View detail</button> ' +
+          reviewLinkCell(e.report_id, e.user_email) +
+        '</td></tr>';
+    }).join('');
+    bindLinkButtons(tbody);
+    tbody.querySelectorAll('.detail-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        openDetail(btn.getAttribute('data-report-id'));
+      });
+    });
+  }
+
+  async function loadEvaluations() {
+    setTabStatus('evaluations', true);
+    try {
+      if (!summaryCache) {
+        const res = await apiFetch('/admin/validation-summary');
+        if (!res.ok) throw new Error('Failed to load validation summary');
+        summaryCache = await res.json();
+      }
+      renderEvaluationsTable();
+      setTabStatus('evaluations', false);
+    } catch (err) {
+      setTabStatus('evaluations', false, err.message || 'Error loading data');
+    }
+  }
+
+  async function openDetail(reportId) {
+    const modal = document.getElementById('modal-backdrop');
+    const body = document.getElementById('modal-body');
+    document.getElementById('modal-title').textContent = 'Evaluation: ' + reportId;
+    body.innerHTML = '<div class="status"><span class="spinner"></span>Loading…</div>';
+    modal.classList.remove('hidden');
+    try {
+      const res = await apiFetch('/admin/validation-detail?report_id=' + encodeURIComponent(reportId));
+      if (!res.ok) throw new Error('Detail not found');
+      const data = await res.json();
+      const clauses = data.clause_results || {};
+      const keys = Object.keys(clauses).sort();
+      if (!keys.length) {
+        body.innerHTML = '<p>No clause results.</p>';
+        return;
+      }
+      body.innerHTML = '<div class="table-wrap"><table><thead><tr><th>Clause</th><th>Verdict</th><th>Evidence</th></tr></thead><tbody>' +
+        keys.map(function (k) {
+          const c = clauses[k];
+          const ev = (c.evidence_sentences || []);
+          const evHtml = ev.length
+            ? '<div class="evidence-snippet">' + ev.map(function (s) { return '<p>' + escapeHtml(s) + '</p>'; }).join('') + '</div>'
+            : '<span class="evidence-snippet">—</span>';
+          return '<tr><td>' + escapeHtml(k) + '</td><td>' + verdictBadge(c.verdict) + '</td><td>' + evHtml + '</td></tr>';
+        }).join('') + '</tbody></table></div>';
+    } catch (err) {
+      body.innerHTML = '<p class="status error">' + escapeHtml(err.message) + '</p>';
+    }
+  }
+
+  function closeModal() {
+    document.getElementById('modal-backdrop').classList.add('hidden');
+  }
+
+  async function generateReviewLink(reportId, reviewerEmail, btn) {
+    if (!reviewerEmail) {
+      alert('No user email on this evaluation. Cannot generate review link.');
+      return;
+    }
+    btn.disabled = true;
+    const preview = btn.nextElementSibling;
+    try {
+      const res = await apiFetch('/admin/generate-review-link', {
+        method: 'POST',
+        body: JSON.stringify({ report_id: reportId, reviewer_email: reviewerEmail })
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(function () { return {}; });
+        throw new Error(body.detail || 'Failed to generate link');
+      }
+      const data = await res.json();
+      const url = data.review_url;
+      try {
+        await navigator.clipboard.writeText(url);
+      } catch (clipErr) {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      const orig = btn.textContent;
+      btn.textContent = '✓ Copied!';
+      btn.classList.add('copied');
+      if (preview) {
+        preview.textContent = url;
+        preview.classList.remove('hidden');
+        preview.title = url;
+      }
+      setTimeout(function () {
+        btn.textContent = orig;
+        btn.classList.remove('copied');
+        btn.disabled = false;
+      }, 2000);
+    } catch (err) {
+      alert(err.message || 'Link generation failed');
+      btn.disabled = false;
+    }
+  }
+
+  function bindLinkButtons(container) {
+    container.querySelectorAll('.gen-link-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        generateReviewLink(
+          btn.getAttribute('data-report-id'),
+          btn.getAttribute('data-email'),
+          btn
+        );
+      });
+    });
+  }
+
+  function loadTab(tabId) {
+    if (tabId === 'overview') loadOverview();
+    else if (tabId === 'expert') loadExpert();
+    else if (tabId === 'evaluations') loadEvaluations();
+  }
+
+  document.querySelectorAll('.tab-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      const tab = btn.getAttribute('data-tab');
+      document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+      document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById('tab-' + tab).classList.add('active');
+      loadTab(tab);
+    });
+  });
+
+  document.querySelectorAll('.refresh-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      const tab = btn.getAttribute('data-tab');
+      if (tab === 'overview' || tab === 'evaluations') summaryCache = null;
+      loadTab(tab);
+    });
+  });
+
+  document.getElementById('apply-filters-btn').addEventListener('click', function () {
+    if (summaryCache) {
+      renderEvaluationsTable();
+    } else {
+      loadEvaluations();
+    }
+  });
+
+  authBtn.addEventListener('click', verifyAndEnter);
+  apiKeyInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') verifyAndEnter();
+  });
+  document.getElementById('sign-out-btn').addEventListener('click', signOut);
+  document.getElementById('modal-close').addEventListener('click', closeModal);
+  document.getElementById('modal-backdrop').addEventListener('click', function (e) {
+    if (e.target === document.getElementById('modal-backdrop')) closeModal();
+  });
+})();
+</script>
+</body>
+</html>
