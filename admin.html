@@ -240,7 +240,7 @@ tbody tr:last-child td{border-bottom:none}
   })();
 
   const VERDICTS = ['COMPLIANT', 'MINOR_GAP', 'NOT_COMPLIANT', 'CRITICAL_FINDING'];
-  let apiKey = '';
+  let sessionToken = '';
   let summaryCache = null;
   let expertsCache = null;
 
@@ -251,7 +251,7 @@ tbody tr:last-child td{border-bottom:none}
   const authError = document.getElementById('auth-error');
 
   function headers() {
-    return { 'X-API-Key': apiKey, 'Content-Type': 'application/json' };
+    return { 'X-Admin-Token': sessionToken, 'Content-Type': 'application/json' };
   }
 
   async function apiFetch(path, options) {
@@ -306,23 +306,36 @@ tbody tr:last-child td{border-bottom:none}
     if (!key) return;
     authBtn.disabled = true;
     showAuthError(false);
-    apiKey = key;
-    const res = await apiFetch('/admin/validation-summary');
-    if (!res.ok) {
-      apiKey = '';
+    try {
+      const loginRes = await fetch(API_BASE + '/admin/session', {
+        method: 'POST',
+        headers: { 'X-API-Key': key, 'Content-Type': 'application/json' }
+      });
+      if (!loginRes.ok) throw new Error('Invalid key');
+      const loginData = await loginRes.json();
+      sessionToken = loginData.session_token;
+      apiKeyInput.value = '';
+      const res = await apiFetch('/admin/validation-summary');
+      if (!res.ok) {
+        sessionToken = '';
+        showAuthError(true);
+        authBtn.disabled = false;
+        return;
+      }
+      summaryCache = await res.json();
+      authScreen.classList.add('hidden');
+      dashboard.classList.remove('hidden');
+      authBtn.disabled = false;
+      loadTab('overview');
+    } catch (err) {
+      sessionToken = '';
       showAuthError(true);
       authBtn.disabled = false;
-      return;
     }
-    summaryCache = await res.json();
-    authScreen.classList.add('hidden');
-    dashboard.classList.remove('hidden');
-    authBtn.disabled = false;
-    loadTab('overview');
   }
 
   function signOut() {
-    apiKey = '';
+    sessionToken = '';
     summaryCache = null;
     expertsCache = null;
     apiKeyInput.value = '';
