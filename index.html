@@ -344,6 +344,7 @@ footer{padding:2.5rem 3rem;border-top:1px solid var(--border)}
           <a href="legal/tos.html" target="_blank" style="color:var(--accent);text-decoration:none">Terms of Service</a>
           and
           <a href="legal/privacy.html" target="_blank" style="color:var(--accent);text-decoration:none">Privacy Policy</a>
+          , and <a href="legal/aup.html" target="_blank" style="color:var(--accent);text-decoration:none">Acceptable Use Policy</a>
         </label>
       </div>
       <button class="btn-form" onclick="redeemInvite()">Access Audit Sandbox &rarr;</button>
@@ -432,6 +433,7 @@ async function redeemInvite(){
   if(!code){showToast('Enter an invite code',false);return;}
   if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){showToast('Enter a valid email address',false);return;}
   if(!consent){showToast('Please accept the Terms of Service and Privacy Policy to continue',false);return;}
+  localStorage.setItem('zexl_consent_agreed_at', new Date().toISOString());
   var btn=document.querySelector('.btn-form');
   btn.textContent='Verifying...';btn.disabled=true;
   try{
