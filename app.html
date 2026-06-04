@@ -316,7 +316,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
     <div class="result-meta" id="res-meta"></div>
 
     <div class="result-actions">
-      <button type="button" id="expert-review-btn" class="btn-expert-review hidden" onclick="openExpertReview()">Open Expert Review Portal</button>
+      <button type="button" id="expert-review-btn" class="btn-expert-review hidden" onclick="openExpertReviewInfo()">Request Expert Review →</button>
       <button type="button" class="btn-secondary" onclick="resetToUpload()">← Evaluate another document</button>
     </div>
 
@@ -496,6 +496,10 @@ function openExpertReview() {
   if (expertReviewUrl) {
     window.open(expertReviewUrl, '_blank');
   }
+}
+
+function openExpertReviewInfo() {
+  alert('Expert review by certified QA/RA professionals is coming in the Pro plan.\n\nInterested? Contact us at hello@zexlmed.com');
 }
 
 async function sendFeedback(clarity) {
