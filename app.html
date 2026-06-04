@@ -56,6 +56,40 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .result-actions{display:flex;flex-wrap:wrap;gap:0.75rem;margin-top:1.5rem;align-items:center}
 .btn-expert-review{background:var(--accent);color:var(--navy);border:none;padding:0.75rem 1.75rem;border-radius:4px;font-family:var(--sans);font-size:0.9rem;font-weight:600;cursor:pointer;letter-spacing:0.04em;transition:background 0.2s}
 .btn-expert-review:hover{background:#35cead}
+.eval-spinner {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  margin: 0 auto;
+  background: transparent;
+  border: 5px solid transparent;
+  border-top-color: var(--accent);
+  border-right-color: var(--accent);
+  animation: spin 0.75s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  box-shadow: 0 0 12px rgba(42, 212, 187, 0.35);
+}
+@keyframes spin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.eval-pulse {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 1rem;
+}
+.eval-pulse span {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: evalPulse 1.2s ease-in-out infinite;
+  opacity: 0.3;
+}
+.eval-pulse span:nth-child(2) { animation-delay: 0.2s; }
+.eval-pulse span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes evalPulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.85); }
+  50%       { opacity: 1;   transform: scale(1.15); }
+}
 
 .app-wrap { max-width: 720px; margin: 0 auto; padding: 6rem 2rem 4rem; }
 
@@ -265,6 +299,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 
   <div id="state-result" class="hidden">
 
+    <div id="result-area" class="hidden"></div>
+
     <div class="how-to-read">
       <div class="htr-label">How to read this result</div>
       <ol>
@@ -316,8 +352,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
     <div class="result-meta" id="res-meta"></div>
 
     <div class="result-actions">
-      <button type="button" id="expert-review-btn" class="btn-expert-review hidden" onclick="openExpertReviewInfo()">Request Expert Review →</button>
-      <button type="button" class="btn-secondary" onclick="resetToUpload()">← Evaluate another document</button>
+      <button type="button" class="btn-form" onclick="resetToUpload()">← Evaluate another document</button>
+      <button type="button" id="expert-review-btn" class="btn-secondary hidden" onclick="openExpertReviewInfo()">Request Expert Review →</button>
     </div>
 
   </div>
@@ -408,8 +444,20 @@ function setFile(f) {
 async function runEvaluation() {
   if (!selectedFile) { showToast('Please select a .docx file first.', false); return; }
   const btn = document.getElementById('eval-btn');
-  btn.textContent = 'Evaluating against ISO 13485 / FDA QMSR…';
+  btn.textContent = 'Evaluating...';
   btn.disabled = true;
+  document.getElementById('result-area').innerHTML = `
+    <div style="text-align:center;padding:2.5rem 0;">
+      <div class="eval-spinner"></div>
+      <div class="eval-pulse">
+        <span></span><span></span><span></span>
+      </div>
+      <p style="margin-top:1rem;color:var(--text-muted);font-size:0.9rem;font-family:var(--mono);">
+        Analyzing document against ISO 13485:2016 clauses…
+      </p>
+    </div>`;
+  document.getElementById('result-area').classList.remove('hidden');
+  showState('result');
   const fd = new FormData();
   fd.append('file', selectedFile);
   try {
@@ -439,12 +487,20 @@ async function runEvaluation() {
       };
       showToast(msgs[r.status] || 'Unexpected error. Please try again.', false);
       }
+      document.getElementById('result-area').classList.add('hidden');
+      document.getElementById('result-area').innerHTML = '';
+      showState('upload');
     } else {
+      document.getElementById('result-area').classList.add('hidden');
+      document.getElementById('result-area').innerHTML = '';
       renderResult(d);
       showState('result');
     }
   } catch(e) {
     showToast('Connection error. Please check your connection and try again.', false);
+    document.getElementById('result-area').classList.add('hidden');
+    document.getElementById('result-area').innerHTML = '';
+    showState('upload');
   }
   btn.textContent = 'Evaluate Document →';
   btn.disabled = false;
