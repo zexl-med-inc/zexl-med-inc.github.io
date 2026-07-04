@@ -758,13 +758,26 @@ function renderExplanations(data) {
     container.classList.remove('hidden');
     return;
   }
+  const hasDocumentFallback = items.some(function(item) { return item.scope === 'document'; });
+  if (hasDocumentFallback) {
+    const note = document.createElement('p');
+    note.style.fontSize = '0.85rem';
+    note.style.color = 'var(--text-muted)';
+    note.style.marginBottom = '0.75rem';
+    note.style.lineHeight = '1.6';
+    note.textContent = 'No clause-level explanation available. Document-level explanation is shown because no eligible clause findings were generated.';
+    container.appendChild(note);
+  }
   items.forEach(function(item) {
     const card = document.createElement('div');
     card.className = 'llm-finding';
     const conf = item.E_confidence || {};
+    const findingLabel = item.scope === 'document'
+      ? 'Document-level'
+      : (item.finding_id || 'finding');
     card.innerHTML =
       '<div class="llm-finding-head">' +
-        '<span class="llm-finding-id">' + escapeHtml(item.finding_id || 'finding') + '</span>' +
+        '<span class="llm-finding-id">' + escapeHtml(findingLabel) + '</span>' +
         '<span class="verdict-badge v-' + escapeHtml(item.verdict || 'NOT_COMPLIANT') + '">' + escapeHtml(item.verdict || '') + '</span>' +
       '</div>' +
       fieldHtml('A — Why', item.A_why) +
@@ -793,7 +806,11 @@ function renderRedrafts(data) {
   container.innerHTML = '';
   const items = data.redrafts || [];
   if (!items.length) {
-    container.innerHTML = '<p style="font-size:0.85rem;color:var(--text-muted)">No redrafts were generated for the selected clauses.</p>';
+    let emptyMsg = 'No redrafts were generated for the selected clauses.';
+    if (currentReportData && REDRAFT_RELEVANT.includes(currentReportData.decision)) {
+      emptyMsg = 'No clause-level redrafts were generated. Redraft targets specific clause gaps; when clause findings are unavailable, refer to the document-level required action above.';
+    }
+    container.innerHTML = '<p style="font-size:0.85rem;color:var(--text-muted)">' + emptyMsg + '</p>';
     container.classList.remove('hidden');
     return;
   }
