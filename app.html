@@ -201,6 +201,72 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
   word-break: break-all;
 }
 
+.job-panel {
+  margin-top: 1rem; padding: 1rem 1.1rem;
+  background: var(--navy); border: 1px solid var(--border); border-radius: 2px;
+  text-align: center;
+}
+.job-panel .job-msg {
+  font-family: var(--mono); font-size: 0.78rem; color: var(--text-muted); margin-top: 0.75rem;
+}
+.job-panel .job-elapsed { color: var(--accent); }
+
+.llm-finding {
+  border-top: 1px solid var(--border); padding-top: 1rem; margin-top: 1rem;
+}
+.llm-finding:first-child { border-top: none; padding-top: 0; margin-top: 0; }
+.llm-finding-head {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 0.65rem;
+}
+.llm-finding-id { font-family: var(--mono); font-size: 0.72rem; color: var(--accent); }
+.llm-field { margin-bottom: 0.55rem; }
+.llm-field-label {
+  font-family: var(--mono); font-size: 0.6rem; color: var(--text-muted);
+  letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.2rem;
+}
+.llm-field-body { font-size: 0.84rem; color: var(--text-secondary); line-height: 1.65; }
+
+.redraft-disclaimer {
+  margin-top: 1rem; padding: 0.85rem 1rem;
+  background: rgba(210,160,20,0.08); border: 1px solid rgba(210,160,20,0.25);
+  border-radius: 2px; font-size: 0.8rem; color: #c49a18; line-height: 1.6;
+}
+.redraft-text {
+  font-size: 0.85rem; color: var(--text-primary); line-height: 1.7;
+  background: var(--navy); border: 1px solid var(--border);
+  padding: 0.85rem 1rem; border-radius: 2px; margin-top: 0.5rem;
+  white-space: pre-wrap;
+}
+
+.job-error {
+  margin-top: 1rem; padding: 0.75rem 1rem;
+  background: rgba(210,50,50,0.08); border: 1px solid rgba(210,50,50,0.25);
+  border-radius: 2px; font-family: var(--mono); font-size: 0.78rem; color: #cc4444;
+}
+
+.result-actions-inline { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0; margin-bottom: 0.5rem; }
+.btn-action-secondary {
+  background: transparent; border: 1px solid var(--border); color: var(--text-secondary);
+  padding: 0.55rem 1.1rem; border-radius: 2px; font-family: var(--sans); font-size: 0.82rem;
+  font-weight: 500; cursor: pointer; letter-spacing: 0.03em; transition: all 0.2s;
+}
+.btn-action-secondary:hover { border-color: var(--accent); color: var(--accent); }
+.btn-action-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+@media print {
+  nav, .no-print, #app-toast, .modal-overlay, .comprehension, #result-area { display: none !important; }
+  body { background: #fff; color: #111; font-size: 11pt; }
+  .app-wrap { padding-top: 0; max-width: 100%; }
+  .result-block, .how-to-read {
+    background: #fff; border: 1px solid #ccc; break-inside: avoid; page-break-inside: avoid;
+  }
+  .block-label, .verdict-badge, .llm-finding-id { color: #111 !important; }
+  .v-COMPLIANT, .v-MINOR_GAP, .v-NOT_COMPLIANT, .v-CRITICAL_FINDING {
+    border: 1px solid #333 !important; color: #111 !important; background: #f5f5f5 !important;
+  }
+  .redraft-disclaimer { border: 1px solid #996; color: #553; background: #fff8e6; }
+}
+
 #app-toast {
   position: fixed; bottom: 2rem; right: 2rem;
   padding: 0.75rem 1.25rem; border-radius: 4px;
@@ -308,6 +374,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 
     <div id="result-area" class="hidden"></div>
 
+    <div id="printable-report">
+
     <div class="how-to-read">
       <div class="htr-label">How to read this result</div>
       <ol>
@@ -346,6 +414,33 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       </div>
     </div>
 
+    <div id="llm-workflow" class="result-block hidden">
+      <div class="block-label">④ LLM Analysis</div>
+      <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1rem;line-height:1.6">
+        Generate clause-level explanations and suggested redrafts for findings. This may take up to a minute.
+      </p>
+      <div class="result-actions-inline no-print">
+        <button type="button" id="explain-btn" class="btn-action-secondary" onclick="startExplanation()">Explain findings →</button>
+        <button type="button" id="redraft-btn" class="btn-action-secondary" onclick="startRedraft()">Generate redraft →</button>
+      </div>
+      <div id="explain-job-panel" class="job-panel hidden">
+        <div class="eval-spinner"></div>
+        <div class="eval-pulse"><span></span><span></span><span></span></div>
+        <div class="job-msg">Generating explanation…</div>
+        <div class="job-msg job-elapsed">0s elapsed</div>
+      </div>
+      <div id="explain-error" class="job-error hidden"></div>
+      <div id="explain-results" class="hidden"></div>
+      <div id="redraft-job-panel" class="job-panel hidden">
+        <div class="eval-spinner"></div>
+        <div class="eval-pulse"><span></span><span></span><span></span></div>
+        <div class="job-msg">Generating redraft…</div>
+        <div class="job-msg job-elapsed">0s elapsed</div>
+      </div>
+      <div id="redraft-error" class="job-error hidden"></div>
+      <div id="redraft-results" class="hidden"></div>
+    </div>
+
     <div class="comprehension">
       <div class="comp-q">Was this result clear to you?</div>
       <div class="comp-buttons" id="comp-buttons">
@@ -358,9 +453,13 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 
     <div class="result-meta" id="res-meta"></div>
 
-    <div class="result-actions">
+    </div><!-- /printable-report -->
+
+    <div class="result-actions no-print">
       <button type="button" class="btn-form" onclick="resetToUpload()">← Evaluate another document</button>
-      <button type="button" id="expert-review-btn" class="btn-secondary hidden" onclick="openExpertReviewInfo()">Request Expert Review →</button>
+      <button type="button" id="expert-review-btn" class="btn-secondary hidden">Request Expert Review →</button>
+      <button type="button" class="btn-action-secondary" onclick="downloadReportJson()">Download JSON</button>
+      <button type="button" class="btn-action-secondary" onclick="printReport()">Print</button>
     </div>
 
   </div>
@@ -402,7 +501,14 @@ const FIXED_ACTIONS = {
 
 let apiKey = '';
 let currentReportId = '';
+let currentReportData = null;
 let expertReviewUrl = null;
+let expertReviewAvailable = false;
+let explanationResult = null;
+let redraftResult = null;
+
+const EXPLAIN_RELEVANT = ['NOT_COMPLIANT', 'MINOR_GAP', 'CRITICAL_FINDING'];
+const REDRAFT_RELEVANT = ['NOT_COMPLIANT', 'MINOR_GAP'];
 
 window.addEventListener('DOMContentLoaded', () => {
   const stored = localStorage.getItem('zexl_api_key');
@@ -538,6 +644,9 @@ async function runEvaluation() {
 
 function renderResult(d) {
   currentReportId = d.report_id;
+  currentReportData = d;
+  explanationResult = null;
+  redraftResult = null;
 
   const badge = document.getElementById('res-verdict-badge');
   badge.textContent = d.decision;
@@ -572,12 +681,235 @@ function renderResult(d) {
   document.getElementById('res-meta').innerHTML = metaHTML;
 
   expertReviewUrl = d.expert_review_url || null;
+  expertReviewAvailable = d.expert_review_available === true;
   const expertBtn = document.getElementById('expert-review-btn');
   if (expertReviewUrl) {
     expertBtn.classList.remove('hidden');
+    expertBtn.textContent = expertReviewAvailable ? 'Open Expert Review →' : 'Request Expert Review →';
+    expertBtn.onclick = expertReviewAvailable ? openExpertReview : openExpertReviewInfo;
   } else {
     expertBtn.classList.add('hidden');
   }
+
+  resetLlmPanels();
+  const llmBlock = document.getElementById('llm-workflow');
+  const showLlm = EXPLAIN_RELEVANT.includes(d.decision) || REDRAFT_RELEVANT.includes(d.decision);
+  llmBlock.classList.toggle('hidden', !showLlm);
+  document.getElementById('explain-btn').disabled = !EXPLAIN_RELEVANT.includes(d.decision);
+  document.getElementById('redraft-btn').disabled = !REDRAFT_RELEVANT.includes(d.decision);
+}
+
+function resetLlmPanels() {
+  ['explain-job-panel', 'explain-results', 'explain-error', 'redraft-job-panel', 'redraft-results', 'redraft-error'].forEach(function(id) {
+    const el = document.getElementById(id);
+    el.classList.add('hidden');
+    if (id.endsWith('-results')) el.innerHTML = '';
+    if (id.endsWith('-error')) el.textContent = '';
+  });
+  if (currentReportData) {
+    document.getElementById('explain-btn').disabled = !EXPLAIN_RELEVANT.includes(currentReportData.decision);
+    document.getElementById('redraft-btn').disabled = !REDRAFT_RELEVANT.includes(currentReportData.decision);
+  }
+}
+
+async function pollAsyncJob(statusPath, resultPath, panelId, errorId, onSuccess) {
+  const panel = document.getElementById(panelId);
+  const errorEl = document.getElementById(errorId);
+  const elapsedEl = panel.querySelector('.job-elapsed');
+  errorEl.classList.add('hidden');
+  panel.classList.remove('hidden');
+  const start = Date.now();
+  for (let i = 0; i < 120; i++) {
+    if (elapsedEl) elapsedEl.textContent = Math.floor((Date.now() - start) / 1000) + 's elapsed';
+    const sr = await fetch(API_BASE + statusPath, { headers: { 'X-API-Key': apiKey } });
+    const st = await sr.json().catch(function() { return {}; });
+    if (st.status === 'completed') {
+      panel.classList.add('hidden');
+      const rr = await fetch(API_BASE + resultPath, { headers: { 'X-API-Key': apiKey } });
+      const body = await rr.json().catch(function() { return {}; });
+      if (rr.status === 200) {
+        onSuccess(body);
+        return;
+      }
+      errorEl.textContent = apiErrorDetail(body, 'Could not load job result.');
+      errorEl.classList.remove('hidden');
+      return;
+    }
+    if (st.status === 'failed') {
+      panel.classList.add('hidden');
+      errorEl.textContent = st.error || 'Job failed. Please try again or contact hello@zexlmed.com';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+    await new Promise(function(r) { setTimeout(r, 2500); });
+  }
+  panel.classList.add('hidden');
+  errorEl.textContent = 'Timed out waiting for the job to complete. Please try again.';
+  errorEl.classList.remove('hidden');
+}
+
+function renderExplanations(data) {
+  explanationResult = data;
+  const container = document.getElementById('explain-results');
+  container.innerHTML = '';
+  const items = data.explanations || [];
+  if (!items.length) {
+    container.innerHTML = '<p style="font-size:0.85rem;color:var(--text-muted)">No explanations were generated for this report.</p>';
+    container.classList.remove('hidden');
+    return;
+  }
+  items.forEach(function(item) {
+    const card = document.createElement('div');
+    card.className = 'llm-finding';
+    const conf = item.E_confidence || {};
+    card.innerHTML =
+      '<div class="llm-finding-head">' +
+        '<span class="llm-finding-id">' + escapeHtml(item.finding_id || 'finding') + '</span>' +
+        '<span class="verdict-badge v-' + escapeHtml(item.verdict || 'NOT_COMPLIANT') + '">' + escapeHtml(item.verdict || '') + '</span>' +
+      '</div>' +
+      fieldHtml('A — Why', item.A_why) +
+      fieldHtml('B — Evidence mapping', item.B_evidence_mapping) +
+      fieldHtml('C — Regulatory interpretation', item.C_regulatory_interpretation) +
+      fieldHtml('D — Practical recommendation', item.D_practical_recommendation) +
+      (conf.confidence_score != null
+        ? '<div class="llm-field"><div class="llm-field-label">E — Confidence</div><div class="llm-field-body">Score: ' +
+          escapeHtml(String(conf.confidence_score)) + ' · Basis: ' + escapeHtml(conf.basis || '') +
+          (conf.limitation ? '<br>Limitation: ' + escapeHtml(conf.limitation) : '') + '</div></div>'
+        : '');
+    container.appendChild(card);
+  });
+  container.classList.remove('hidden');
+}
+
+function fieldHtml(label, value) {
+  if (!value) return '';
+  return '<div class="llm-field"><div class="llm-field-label">' + escapeHtml(label) +
+    '</div><div class="llm-field-body">' + escapeHtml(value) + '</div></div>';
+}
+
+function renderRedrafts(data) {
+  redraftResult = data;
+  const container = document.getElementById('redraft-results');
+  container.innerHTML = '';
+  const items = data.redrafts || [];
+  if (!items.length) {
+    container.innerHTML = '<p style="font-size:0.85rem;color:var(--text-muted)">No redrafts were generated for the selected clauses.</p>';
+    container.classList.remove('hidden');
+    return;
+  }
+  items.forEach(function(item) {
+    const card = document.createElement('div');
+    card.className = 'llm-finding';
+    card.innerHTML =
+      '<div class="llm-finding-head">' +
+        '<span class="llm-finding-id">Clause ' + escapeHtml(item.clause_id || '') + '</span>' +
+        (item.clause_title ? '<span style="font-size:0.82rem;color:var(--text-secondary)">' + escapeHtml(item.clause_title) + '</span>' : '') +
+      '</div>' +
+      (item.disclaimer ? '<div class="redraft-disclaimer">' + escapeHtml(item.disclaimer) + '</div>' : '') +
+      '<div class="redraft-text">' + escapeHtml(item.ai_draft_text || '') + '</div>';
+    container.appendChild(card);
+  });
+  container.classList.remove('hidden');
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+async function startExplanation() {
+  if (!currentReportId) return;
+  const btn = document.getElementById('explain-btn');
+  btn.disabled = true;
+  document.getElementById('explain-error').classList.add('hidden');
+  document.getElementById('explain-results').classList.add('hidden');
+  document.getElementById('explain-job-panel').classList.add('hidden');
+  try {
+    const r = await fetch(API_BASE + '/explain', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
+      body: JSON.stringify({ report_id: currentReportId })
+    });
+    const d = await r.json();
+    if (r.status === 202) {
+      await pollAsyncJob(
+        '/explain/status/' + d.job_id,
+        '/explain/result/' + d.job_id,
+        'explain-job-panel',
+        'explain-error',
+        renderExplanations
+      );
+    } else {
+      document.getElementById('explain-error').textContent =
+        apiErrorDetail(d, 'Explanation request failed. Please try again.');
+      document.getElementById('explain-error').classList.remove('hidden');
+    }
+  } catch (e) {
+    document.getElementById('explain-error').textContent = 'Connection error. Please try again.';
+    document.getElementById('explain-error').classList.remove('hidden');
+  }
+  btn.disabled = !EXPLAIN_RELEVANT.includes(currentReportData && currentReportData.decision);
+}
+
+async function startRedraft() {
+  if (!currentReportId) return;
+  const btn = document.getElementById('redraft-btn');
+  btn.disabled = true;
+  document.getElementById('redraft-error').classList.add('hidden');
+  document.getElementById('redraft-results').classList.add('hidden');
+  document.getElementById('redraft-job-panel').classList.add('hidden');
+  try {
+    const r = await fetch(API_BASE + '/redraft', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
+      body: JSON.stringify({ report_id: currentReportId })
+    });
+    const d = await r.json();
+    if (r.status === 202) {
+      await pollAsyncJob(
+        '/redraft/status/' + d.job_id,
+        '/redraft/result/' + d.job_id,
+        'redraft-job-panel',
+        'redraft-error',
+        renderRedrafts
+      );
+    } else {
+      document.getElementById('redraft-error').textContent =
+        apiErrorDetail(d, 'Redraft request failed. Please try again.');
+      document.getElementById('redraft-error').classList.remove('hidden');
+    }
+  } catch (e) {
+    document.getElementById('redraft-error').textContent = 'Connection error. Please try again.';
+    document.getElementById('redraft-error').classList.remove('hidden');
+  }
+  btn.disabled = !REDRAFT_RELEVANT.includes(currentReportData && currentReportData.decision);
+}
+
+function downloadReportJson() {
+  if (!currentReportData) return;
+  const payload = {
+    exported_at: new Date().toISOString(),
+    report: currentReportData,
+    explanation: explanationResult,
+    redraft: redraftResult
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'report_' + currentReportId + '.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  showToast('Report downloaded as JSON', true);
+}
+
+function printReport() {
+  window.print();
 }
 
 function openExpertReview() {
@@ -587,7 +919,7 @@ function openExpertReview() {
 }
 
 function openExpertReviewInfo() {
-  alert('Expert review by certified QA/RA professionals is coming in the Pro plan.\n\nInterested? Contact us at hello@zexlmed.com');
+  alert('Expert Review is available to invited Expert Beta reviewers.\n\nIf you need access, contact hello@zexlmed.com');
 }
 
 async function sendFeedback(clarity) {
@@ -606,7 +938,13 @@ async function sendFeedback(clarity) {
 function resetToUpload() {
   selectedFile = null;
   expertReviewUrl = null;
+  expertReviewAvailable = false;
+  currentReportData = null;
+  explanationResult = null;
+  redraftResult = null;
   document.getElementById('expert-review-btn').classList.add('hidden');
+  document.getElementById('llm-workflow').classList.add('hidden');
+  resetLlmPanels();
   document.getElementById('file-input').value = '';
   document.getElementById('filename-display').classList.add('hidden');
   showState('upload');
