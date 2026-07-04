@@ -319,15 +319,15 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 <body>
 
 <nav>
-  <a href="index.html" class="nav-logo" style="text-decoration:none">ZEXL<span>med</span></a>
+  <a href="/" class="nav-logo" style="text-decoration:none">ZEXL<span>med</span></a>
   <div class="nav-links">
-    <a href="index.html#why">Why deterministic</a>
-    <a href="index.html#how">How it works</a>
-    <a href="index.html#verdicts">Verdicts</a>
-    <a href="index.html#access">Sandbox access</a>
-    <a href="index.html#partner">Partnership</a>
+    <a href="/#why">Why deterministic</a>
+    <a href="/#how">How it works</a>
+    <a href="/#verdicts">Verdicts</a>
+    <a href="/#access">Sandbox access</a>
+    <a href="/#partner">Partnership</a>
   </div>
-<a href="index.html#why" class="nav-cta" onclick="exitSandbox(event)">
+<a href="/#why" class="nav-cta" onclick="exitSandbox(event)">
   ← Exit Sandbox
 </a>
 </nav>
@@ -487,7 +487,7 @@ function exitSandbox(e) {
   e.preventDefault();
   localStorage.removeItem('zexl_api_key');
   localStorage.removeItem('zexl_invite_code');
-  window.location.href = 'index.html#why';
+  window.location.href = '/#why';
 }
 
 const API_BASE = 'https://zexl-med-core-production.up.railway.app';
