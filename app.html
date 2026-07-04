@@ -293,13 +293,13 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
     <div class="state-card">
       <div class="form-title" style="margin-bottom:0.35rem">Upload QMS Document</div>
       <div class="form-sub" style="margin-bottom:1.25rem">
-        Submit one .docx QMS document at a time for clause-level evaluation against ISO 13485:2016 / FDA QMSR.
+        Submit one .docx or .pdf QMS document at a time for clause-level evaluation against ISO 13485:2016 / FDA QMSR.
       </div>
       <div class="dropzone" id="dropzone" onclick="document.getElementById('file-input').click()">
-        <div>Drop .docx file here or click to select</div>
+        <div>Drop .docx or .pdf file here or click to select</div>
         <div class="filename hidden" id="filename-display"></div>
       </div>
-      <input type="file" id="file-input" accept=".docx" class="hidden">
+      <input type="file" id="file-input" accept=".docx,.pdf" class="hidden">
       <button class="btn-form" id="eval-btn" onclick="runEvaluation()">Evaluate Document →</button>
     </div>
   </div>
@@ -440,16 +440,34 @@ function submitAuth() {
 }
 
 let selectedFile = null;
+
+function isSupportedUploadFile(name) {
+  const lower = (name || '').toLowerCase();
+  return lower.endsWith('.docx') || lower.endsWith('.pdf');
+}
+
 function setFile(f) {
-  if (!f.name.endsWith('.docx')) { showToast('Only .docx files are supported.', false); return; }
+  if (!isSupportedUploadFile(f.name)) {
+    showToast('Only .docx and .pdf files are supported.', false);
+    return;
+  }
   selectedFile = f;
   const fd = document.getElementById('filename-display');
   fd.textContent = f.name;
   fd.classList.remove('hidden');
 }
 
+function apiErrorDetail(d, fallback) {
+  if (!d || d.detail == null) return fallback;
+  if (typeof d.detail === 'string') return d.detail;
+  if (Array.isArray(d.detail)) {
+    return d.detail.map(function(e) { return e.msg || e.message || String(e); }).join(' ');
+  }
+  return fallback;
+}
+
 async function runEvaluation() {
-  if (!selectedFile) { showToast('Please select a .docx file first.', false); return; }
+  if (!selectedFile) { showToast('Please select a .docx or .pdf file first.', false); return; }
   const btn = document.getElementById('eval-btn');
   btn.textContent = 'Evaluating...';
   btn.disabled = true;
@@ -485,9 +503,14 @@ async function runEvaluation() {
         }
         limitMsg.textContent = d.detail || 'Beta usage limit reached. Contact hello@zexlmed.com for extended access.';
         limitMsg.style.display = 'block';
+      } else if (r.status === 422) {
+        showToast(
+          apiErrorDetail(d, 'This document could not be processed. Please try a different file.'),
+          false
+        );
       } else {
       const msgs = {
-        400: 'Only .docx files are supported.',
+        400: 'Only .docx and .pdf files are supported.',
         401: 'Invalid or expired invite code. Please request a new invite at hello@zexlmed.com',
         413: 'File too large. Maximum 10MB.',
         500: 'Evaluation failed. Please try again or contact hello@zexlmed.com'
