@@ -338,10 +338,10 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
     <div class="state-card">
       <div class="form-title">Enter your invite code</div>
       <div class="form-sub" style="margin-bottom:1.25rem">
-        Enter your invite code to activate sandbox access.
-        If you have already activated access on this browser,
-        you will be redirected automatically.
-        If you are on a new browser or device, contact
+        Paste the invite code you received from ZEXLmed (by email or from your administrator).
+        This is the same credential used to access the sandbox — enter it here to sign in.
+        If you already activated access on this browser, you will be redirected automatically.
+        On a new browser or device, contact
         <a href="mailto:hello@zexlmed.com" style="color:var(--accent)">hello@zexlmed.com</a> for assistance.
       </div>
       <div class="field">
@@ -372,7 +372,14 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 
   <div id="state-result" class="hidden">
 
-    <div id="result-area" class="hidden"></div>
+    <div id="eval-loading-panel" class="job-panel hidden">
+      <div class="eval-spinner"></div>
+      <div class="eval-pulse"><span></span><span></span><span></span></div>
+      <div class="job-msg">Analyzing document against ISO 13485:2016 clauses…</div>
+      <div class="job-msg job-elapsed" id="eval-elapsed">0s elapsed</div>
+    </div>
+
+    <div id="eval-result-content">
 
     <div id="printable-report">
 
@@ -462,6 +469,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
       <button type="button" class="btn-action-secondary" onclick="printReport()">Print</button>
     </div>
 
+    </div><!-- /eval-result-content -->
+
   </div>
 
 </div>
@@ -539,7 +548,7 @@ function showState(s) {
 
 function submitAuth() {
   const v = document.getElementById('auth-key-input').value.trim();
-  if (!v) { showToast('Enter your API key', false); return; }
+  if (!v) { showToast('Enter your invite code', false); return; }
   apiKey = v;
   localStorage.setItem('zexl_api_key', v);
   showState('upload');
@@ -577,17 +586,14 @@ async function runEvaluation() {
   const btn = document.getElementById('eval-btn');
   btn.textContent = 'Evaluating...';
   btn.disabled = true;
-  document.getElementById('result-area').innerHTML = `
-    <div style="text-align:center;padding:2.5rem 0;">
-      <div class="eval-spinner"></div>
-      <div class="eval-pulse">
-        <span></span><span></span><span></span>
-      </div>
-      <p style="margin-top:1rem;color:var(--text-muted);font-size:0.9rem;font-family:var(--mono);">
-        Analyzing document against ISO 13485:2016 clauses…
-      </p>
-    </div>`;
-  document.getElementById('result-area').classList.remove('hidden');
+  document.getElementById('eval-result-content').classList.add('hidden');
+  const loadingPanel = document.getElementById('eval-loading-panel');
+  const elapsedEl = document.getElementById('eval-elapsed');
+  loadingPanel.classList.remove('hidden');
+  const evalStarted = Date.now();
+  const elapsedTimer = setInterval(function() {
+    if (elapsedEl) elapsedEl.textContent = Math.floor((Date.now() - evalStarted) / 1000) + 's elapsed';
+  }, 1000);
   showState('result');
   const fd = new FormData();
   fd.append('file', selectedFile);
@@ -623,20 +629,22 @@ async function runEvaluation() {
       };
       showToast(msgs[r.status] || 'Unexpected error. Please try again.', false);
       }
-      document.getElementById('result-area').classList.add('hidden');
-      document.getElementById('result-area').innerHTML = '';
+      loadingPanel.classList.add('hidden');
+      document.getElementById('eval-result-content').classList.add('hidden');
       showState('upload');
     } else {
-      document.getElementById('result-area').classList.add('hidden');
-      document.getElementById('result-area').innerHTML = '';
+      loadingPanel.classList.add('hidden');
+      document.getElementById('eval-result-content').classList.remove('hidden');
       renderResult(d);
       showState('result');
     }
   } catch(e) {
     showToast('Connection error. Please check your connection and try again.', false);
-    document.getElementById('result-area').classList.add('hidden');
-    document.getElementById('result-area').innerHTML = '';
+    loadingPanel.classList.add('hidden');
+    document.getElementById('eval-result-content').classList.add('hidden');
     showState('upload');
+  } finally {
+    clearInterval(elapsedTimer);
   }
   btn.textContent = 'Evaluate Document →';
   btn.disabled = false;
@@ -710,6 +718,26 @@ function resetLlmPanels() {
     document.getElementById('explain-btn').disabled = !EXPLAIN_RELEVANT.includes(currentReportData.decision);
     document.getElementById('redraft-btn').disabled = !REDRAFT_RELEVANT.includes(currentReportData.decision);
   }
+}
+
+function clearExplainPanels() {
+  ['explain-job-panel', 'explain-results', 'explain-error'].forEach(function(id) {
+    const el = document.getElementById(id);
+    el.classList.add('hidden');
+    if (id.endsWith('-results')) el.innerHTML = '';
+    if (id.endsWith('-error')) el.textContent = '';
+  });
+  explanationResult = null;
+}
+
+function clearRedraftPanels() {
+  ['redraft-job-panel', 'redraft-results', 'redraft-error'].forEach(function(id) {
+    const el = document.getElementById(id);
+    el.classList.add('hidden');
+    if (id.endsWith('-results')) el.innerHTML = '';
+    if (id.endsWith('-error')) el.textContent = '';
+  });
+  redraftResult = null;
 }
 
 async function pollAsyncJob(statusPath, resultPath, panelId, errorId, onSuccess) {
@@ -841,9 +869,8 @@ async function startExplanation() {
   if (!currentReportId) return;
   const btn = document.getElementById('explain-btn');
   btn.disabled = true;
-  document.getElementById('explain-error').classList.add('hidden');
-  document.getElementById('explain-results').classList.add('hidden');
-  document.getElementById('explain-job-panel').classList.add('hidden');
+  clearRedraftPanels();
+  clearExplainPanels();
   try {
     const r = await fetch(API_BASE + '/explain', {
       method: 'POST',
@@ -875,9 +902,8 @@ async function startRedraft() {
   if (!currentReportId) return;
   const btn = document.getElementById('redraft-btn');
   btn.disabled = true;
-  document.getElementById('redraft-error').classList.add('hidden');
-  document.getElementById('redraft-results').classList.add('hidden');
-  document.getElementById('redraft-job-panel').classList.add('hidden');
+  clearExplainPanels();
+  clearRedraftPanels();
   try {
     const r = await fetch(API_BASE + '/redraft', {
       method: 'POST',
@@ -961,6 +987,8 @@ function resetToUpload() {
   redraftResult = null;
   document.getElementById('expert-review-btn').classList.add('hidden');
   document.getElementById('llm-workflow').classList.add('hidden');
+  document.getElementById('eval-loading-panel').classList.add('hidden');
+  document.getElementById('eval-result-content').classList.add('hidden');
   resetLlmPanels();
   document.getElementById('file-input').value = '';
   document.getElementById('filename-display').classList.add('hidden');
