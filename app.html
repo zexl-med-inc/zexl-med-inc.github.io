@@ -6,6 +6,7 @@
 <title>ZEXLmed — Audit Sandbox</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/workspace-shell.css">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -91,7 +92,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
   50%       { opacity: 1;   transform: scale(1.15); }
 }
 
-.app-wrap { max-width: 720px; margin: 0 auto; padding: 6rem 2rem 4rem; }
+.app-wrap { max-width: 720px; margin: 0 auto; padding: 2rem 2rem 4rem; }
 
 .beta-badge {
   display: inline-flex; align-items: center; gap: 0.4rem;
@@ -150,6 +151,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .v-MINOR_GAP        { background:rgba(210,160,20,0.1);  color:#c49a18;       border:1px solid rgba(210,160,20,0.2); }
 .v-NOT_COMPLIANT    { background:rgba(230,100,60,0.1);  color:#d46840;       border:1px solid rgba(230,100,60,0.2); }
 .v-CRITICAL_FINDING { background:rgba(210,50,50,0.1);   color:#cc4444;       border:1px solid rgba(210,50,50,0.2); }
+.v-UNABLE_TO_ASSESS { background:rgba(120,130,150,0.1); color:#8a94a8;       border:1px solid rgba(120,130,150,0.22); }
 
 .escalation-box {
   background: rgba(210,50,50,0.08); border: 1px solid rgba(210,50,50,0.25);
@@ -254,7 +256,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .btn-action-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
 
 @media print {
-  nav, .no-print, #app-toast, .modal-overlay, .comprehension, #result-area { display: none !important; }
+  nav, .no-print, #app-toast, .modal-overlay, .comprehension, #result-area, .zws-shell, .zws-overview { display: none !important; }
+  body.zws-shell-active { padding-top: 0 !important; }
   body { background: #fff; color: #111; font-size: 11pt; }
   .app-wrap { padding-top: 0; max-width: 100%; }
   .result-block, .how-to-read {
@@ -318,21 +321,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 </head>
 <body>
 
-<nav>
-  <a href="/" class="nav-logo" style="text-decoration:none">ZEXL<span>med</span></a>
-  <div class="nav-links">
-    <a href="/#why">Why deterministic</a>
-    <a href="/#how">How it works</a>
-    <a href="/#verdicts">Verdicts</a>
-    <a href="/#access">Sandbox access</a>
-    <a href="/#partner">Partnership</a>
-  </div>
-<a href="/#why" class="nav-cta" onclick="exitSandbox(event)">
-  ← Exit Sandbox
-</a>
-</nav>
+<div id="zws-mount"></div>
 
 <div class="app-wrap">
+
+  <div id="workspace-overview-mount"></div>
 
   <div id="state-auth">
     <div class="state-card">
@@ -491,6 +484,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 
 <div id="app-toast"></div>
 
+<script src="/static/workspace-shell.js"></script>
 <script>
 function exitSandbox(e) {
   e.preventDefault();
@@ -505,7 +499,8 @@ const FIXED_ACTIONS = {
   COMPLIANT:        'No immediate action required. Maintain current documentation standards and verify at next audit cycle.',
   MINOR_GAP:        'Review identified documentation gaps. Address before next scheduled audit. No immediate escalation required.',
   NOT_COMPLIANT:    'Initiate corrective action. Document a remediation plan with target dates and assign ownership.',
-  CRITICAL_FINDING: 'Immediate review required. Escalate to QA management now. Do not defer. Initiate CAPA if not already in progress.'
+  CRITICAL_FINDING: 'Immediate review required. Escalate to QA management now. Do not defer. Initiate CAPA if not already in progress.',
+  UNABLE_TO_ASSESS:   'Route this document to qualified human / QA review. No automated compliance determination was made.'
 };
 
 let apiKey = '';
@@ -519,7 +514,67 @@ let redraftResult = null;
 const EXPLAIN_RELEVANT = ['NOT_COMPLIANT', 'MINOR_GAP', 'CRITICAL_FINDING'];
 const REDRAFT_RELEVANT = ['NOT_COMPLIANT', 'MINOR_GAP'];
 
+function syncWorkspaceForAuth() {
+  WorkspaceShell.setContext({
+    documentName: null,
+    documentType: null,
+    evaluationStatus: 'auth',
+    verdict: null
+  });
+  WorkspaceShell.showOverviewMode('auth');
+}
+
+function syncWorkspaceForUpload() {
+  WorkspaceShell.setContext({
+    documentName: selectedFile ? selectedFile.name : null,
+    documentType: null,
+    evaluationStatus: selectedFile ? 'ready' : 'idle',
+    verdict: null
+  });
+  WorkspaceShell.showOverviewMode('upload');
+}
+
+function syncWorkspaceForEvaluating() {
+  WorkspaceShell.setContext({
+    documentName: selectedFile ? selectedFile.name : null,
+    documentType: null,
+    evaluationStatus: 'evaluating',
+    verdict: null
+  });
+  WorkspaceShell.showOverviewMode('evaluating');
+}
+
+function syncWorkspaceForResult(d) {
+  const docType = WorkspaceShell.parseDocumentTypeFromReport(d);
+  WorkspaceShell.setContext({
+    documentName: (d.audit_metadata && d.audit_metadata.file_name) || (selectedFile && selectedFile.name) || null,
+    documentType: docType,
+    evaluationStatus: 'complete',
+    verdict: d.decision
+  });
+  const showExplain = EXPLAIN_RELEVANT.includes(d.decision);
+  const hasExpert = !!(d.expert_review_url);
+  WorkspaceShell.renderOverviewResult({
+    decision: d.decision,
+    explanation: d.explanation,
+    report: d.report,
+    review_status: d.review_status,
+    nextActionFixed: FIXED_ACTIONS[d.decision] || '',
+    showExplain: showExplain,
+    showRedraft: REDRAFT_RELEVANT.includes(d.decision),
+    showExpert: hasExpert,
+    expertLabel: d.expert_review_available ? 'Open Expert Review' : 'Request Expert Review'
+  });
+}
+
 window.addEventListener('DOMContentLoaded', () => {
+  WorkspaceShell.init({
+    mountId: 'zws-mount',
+    overviewId: 'workspace-overview-mount',
+    activeNav: 'workspace',
+    onExitSandbox: exitSandbox,
+    onPlaceholderNav: function(msg) { showToast(msg, false); }
+  });
   const stored = localStorage.getItem('zexl_api_key');
   if (stored) {
     apiKey = stored;
@@ -544,6 +599,8 @@ function showState(s) {
   ['auth','upload','result'].forEach(id => {
     document.getElementById('state-' + id).classList.toggle('hidden', id !== s);
   });
+  if (s === 'auth') syncWorkspaceForAuth();
+  else if (s === 'upload') syncWorkspaceForUpload();
 }
 
 function submitAuth() {
@@ -570,6 +627,7 @@ function setFile(f) {
   const fd = document.getElementById('filename-display');
   fd.textContent = f.name;
   fd.classList.remove('hidden');
+  syncWorkspaceForUpload();
 }
 
 function apiErrorDetail(d, fallback) {
@@ -595,6 +653,7 @@ async function runEvaluation() {
     if (elapsedEl) elapsedEl.textContent = Math.floor((Date.now() - evalStarted) / 1000) + 's elapsed';
   }, 1000);
   showState('result');
+  syncWorkspaceForEvaluating();
   const fd = new FormData();
   fd.append('file', selectedFile);
   try {
@@ -637,6 +696,7 @@ async function runEvaluation() {
       document.getElementById('eval-result-content').classList.remove('hidden');
       renderResult(d);
       showState('result');
+      syncWorkspaceForResult(d);
     }
   } catch(e) {
     showToast('Connection error. Please check your connection and try again.', false);
@@ -835,7 +895,9 @@ function renderRedrafts(data) {
   const items = data.redrafts || [];
   if (!items.length) {
     let emptyMsg = 'No redrafts were generated for the selected clauses.';
-    if (currentReportData && REDRAFT_RELEVANT.includes(currentReportData.decision)) {
+    if (currentReportData && currentReportData.decision === 'UNABLE_TO_ASSESS') {
+      emptyMsg = 'No clause-level redrafts were generated. Route this document to qualified human / QA review — no automated clause-level gaps were identified under the current detection rules.';
+    } else if (currentReportData && REDRAFT_RELEVANT.includes(currentReportData.decision)) {
       emptyMsg = 'No clause-level redrafts were generated. Redraft targets specific clause gaps; when clause findings are unavailable, refer to the document-level required action above.';
     }
     container.innerHTML = '<p style="font-size:0.85rem;color:var(--text-muted)">' + emptyMsg + '</p>';
