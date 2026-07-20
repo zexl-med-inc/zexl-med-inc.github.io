@@ -28,13 +28,34 @@
   var state = {
     mountEl: null,
     overviewEl: null,
+    llmEl: null,
     onPlaceholderNav: null,
     onExitSandbox: null,
+    onExplainRequest: null,
+    onRedraftRequest: null,
+    onCopyRedraft: null,
+    onDownloadRedraft: null,
     activeNav: 'workspace',
     documentName: null,
     documentType: null,
     evaluationStatus: 'idle',
-    verdict: null
+    verdict: null,
+    documentRisk: null,
+    explain: {
+      status: 'idle',
+      enabled: false,
+      error: null,
+      elapsedSec: 0,
+      data: null
+    },
+    redraft: {
+      status: 'idle',
+      enabled: false,
+      error: null,
+      elapsedSec: 0,
+      data: null,
+      sourceContext: null
+    }
   };
 
   function escapeHtml(s) {
@@ -252,18 +273,14 @@
 
     if (explainBtn && showExplain) {
       explainBtn.addEventListener('click', function () {
-        var target = document.getElementById('llm-workflow');
-        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        var btn = document.getElementById('explain-btn');
-        if (btn && !btn.disabled && typeof global.startExplanation === 'function') {
-          /* scroll only — preserve existing entry point; user may click Explain in LLM block */
-        }
+        scrollToLlmPanel('explain');
+        if (typeof state.onExplainRequest === 'function') state.onExplainRequest();
       });
     }
     if (redraftBtn && showRedraft) {
       redraftBtn.addEventListener('click', function () {
-        var target = document.getElementById('llm-workflow');
-        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        scrollToLlmPanel('redraft');
+        if (typeof state.onRedraftRequest === 'function') state.onRedraftRequest();
       });
     }
     if (expertBtn && showExpert) {
@@ -274,14 +291,278 @@
         }
       });
     }
+
+    renderLlmPanels();
+  }
+
+  function scrollToLlmPanel(which) {
+    var id = which === 'redraft' ? 'zws-redraft-panel' : 'zws-explain-panel';
+    var target = document.getElementById(id) || state.llmEl;
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function jobStatusHtml(status) {
+    var labels = {
+      idle: 'Idle',
+      loading: 'Loading',
+      completed: 'Completed',
+      failed: 'Failed'
+    };
+    return '<span class="zws-job-status zws-job-status--' + status + '">' +
+      escapeHtml(labels[status] || status) + '</span>';
+  }
+
+  function fieldBlock(label, value) {
+    if (!value) return '';
+    return '<div class="zws-field"><div class="zws-field-label">' + escapeHtml(label) +
+      '</div><div class="zws-field-body">' + escapeHtml(value) + '</div></div>';
+  }
+
+  function renderExplainBody() {
+    var st = state.explain;
+    if (!st.enabled) {
+      return '<p class="zws-llm-idle">Explanation is not available for this verdict.</p>';
+    }
+    if (st.status === 'idle') {
+      return '<p class="zws-llm-idle">Generate clause-level explanations for findings. Job status updates here after you start.</p>';
+    }
+    if (st.status === 'loading') {
+      return (
+        '<div class="zws-llm-loading">' +
+          '<div class="zws-llm-spinner" aria-hidden="true"></div>' +
+          '<div class="zws-llm-loading-msg">Generating explanation…</div>' +
+          '<div class="zws-llm-loading-msg zws-llm-elapsed">' + escapeHtml(String(st.elapsedSec || 0)) + 's elapsed</div>' +
+        '</div>'
+      );
+    }
+    if (st.status === 'failed') {
+      return (
+        '<div class="zws-llm-error">' + escapeHtml(st.error || 'Explanation failed.') + '</div>' +
+        '<div class="zws-llm-toolbar">' +
+          '<button type="button" class="zws-action-link" data-zws-explain-retry>Retry explanation</button>' +
+        '</div>'
+      );
+    }
+    var items = (st.data && st.data.explanations) || [];
+    if (!items.length) {
+      return '<p class="zws-llm-empty">No explanations were generated for this report.</p>';
+    }
+    var html = '';
+    var hasDocumentFallback = items.some(function (item) { return item.scope === 'document'; });
+    if (hasDocumentFallback) {
+      html += '<p class="zws-llm-empty" style="margin-bottom:0.75rem">No clause-level explanation available. Document-level explanation is shown because no eligible clause findings were generated.</p>';
+    }
+    items.forEach(function (item) {
+      var conf = item.E_confidence || {};
+      var findingLabel = item.scope === 'document' ? 'Document-level' : (item.finding_id || 'finding');
+      var riskText = state.documentRisk
+        ? 'Document risk: ' + state.documentRisk + (item.verdict ? ' · Finding verdict: ' + item.verdict : '')
+        : (item.verdict || '');
+      html +=
+        '<article class="zws-finding-card">' +
+          '<div class="zws-finding-head">' +
+            '<span class="zws-finding-id">' + escapeHtml(findingLabel) + '</span>' +
+            (item.verdict ? verdictPillHtml(item.verdict) : '') +
+          '</div>' +
+          fieldBlock('Finding context', findingLabel + (item.scope ? ' · scope: ' + item.scope : '')) +
+          fieldBlock('Regulatory reason', item.C_regulatory_interpretation || item.A_why) +
+          fieldBlock('Evidence', item.B_evidence_mapping) +
+          fieldBlock('Risk', riskText) +
+          fieldBlock('Recommended action', item.D_practical_recommendation) +
+          fieldBlock('Why (A)', item.A_why && item.C_regulatory_interpretation ? item.A_why : null) +
+          (conf.confidence_score != null
+            ? fieldBlock('Confidence', 'Score: ' + String(conf.confidence_score) +
+              (conf.basis ? ' · Basis: ' + conf.basis : '') +
+              (conf.limitation ? ' · Limitation: ' + conf.limitation : ''))
+            : '') +
+        '</article>';
+    });
+    return html;
+  }
+
+  function renderRedraftBody() {
+    var st = state.redraft;
+    if (!st.enabled) {
+      return '<p class="zws-llm-idle">Redraft is not available for this verdict.</p>';
+    }
+    if (st.status === 'idle') {
+      return '<p class="zws-llm-idle">Generate suggested redrafts for clause gaps. Comparison appears here when complete.</p>';
+    }
+    if (st.status === 'loading') {
+      return (
+        '<div class="zws-llm-loading">' +
+          '<div class="zws-llm-spinner" aria-hidden="true"></div>' +
+          '<div class="zws-llm-loading-msg">Generating redraft…</div>' +
+          '<div class="zws-llm-loading-msg zws-llm-elapsed">' + escapeHtml(String(st.elapsedSec || 0)) + 's elapsed</div>' +
+        '</div>'
+      );
+    }
+    if (st.status === 'failed') {
+      return (
+        '<div class="zws-llm-error">' + escapeHtml(st.error || 'Redraft failed.') + '</div>' +
+        '<div class="zws-llm-toolbar">' +
+          '<button type="button" class="zws-action-link" data-zws-redraft-retry>Retry redraft</button>' +
+        '</div>'
+      );
+    }
+    var items = (st.data && st.data.redrafts) || [];
+    if (!items.length) {
+      return '<p class="zws-llm-empty">No redrafts were generated for the selected clauses.</p>';
+    }
+    var sourceFallback = st.sourceContext || '';
+    var html = '';
+    items.forEach(function (item, idx) {
+      var originalText = sourceFallback;
+      var originalNote = !originalText
+        ? 'Original source excerpt is not returned by the redraft API. Document evidence signals (if any) are shown when available from the evaluation report.'
+        : '';
+      html +=
+        '<article class="zws-finding-card" data-redraft-idx="' + idx + '">' +
+          '<div class="zws-finding-head">' +
+            '<span class="zws-finding-id">Clause ' + escapeHtml(item.clause_id || '') + '</span>' +
+            (item.clause_title ? '<span style="font-size:0.82rem;color:var(--zws-text-secondary)">' + escapeHtml(item.clause_title) + '</span>' : '') +
+            (item.finding_level ? verdictPillHtml(item.finding_level) : '') +
+          '</div>' +
+          '<div class="zws-compare">' +
+            '<div class="zws-compare-col">' +
+              '<div class="zws-compare-label">Original / source context</div>' +
+              (originalText
+                ? '<div class="zws-compare-text">' + escapeHtml(originalText) + '</div>'
+                : '<div class="zws-compare-text zws-compare-text--muted">' + escapeHtml(originalNote) + '</div>') +
+            '</div>' +
+            '<div class="zws-compare-col">' +
+              '<div class="zws-compare-label">Proposed redraft</div>' +
+              '<div class="zws-compare-text">' + escapeHtml(item.ai_draft_text || '') + '</div>' +
+            '</div>' +
+          '</div>' +
+          (item.disclaimer
+            ? '<div class="zws-disclaimer"><div class="zws-field-label">Rationale / disclaimer</div>' + escapeHtml(item.disclaimer) + '</div>'
+            : '') +
+          '<div class="zws-redraft-actions">' +
+            '<button type="button" class="zws-action-link" data-zws-copy-redraft="' + idx + '"' +
+              (item.ai_draft_text ? '' : ' disabled') + '>Copy redraft</button>' +
+            '<button type="button" class="zws-action-link" data-zws-download-redraft>Download JSON</button>' +
+          '</div>' +
+        '</article>';
+    });
+    return html;
+  }
+
+  function renderLlmPanels() {
+    if (!state.llmEl) return;
+    var explainEnabled = state.explain.enabled;
+    var redraftEnabled = state.redraft.enabled;
+    if (!explainEnabled && !redraftEnabled && state.evaluationStatus !== 'complete') {
+      state.llmEl.innerHTML = '';
+      return;
+    }
+
+    var explainToolbar = '';
+    if (state.explain.enabled && (state.explain.status === 'idle' || state.explain.status === 'completed')) {
+      explainToolbar =
+        '<div class="zws-llm-toolbar">' +
+          '<button type="button" class="zws-action-link zws-action-link--primary" data-zws-explain-start>' +
+            (state.explain.status === 'completed' ? 'Run explanation again' : 'Generate explanation') +
+          '</button>' +
+        '</div>';
+    }
+
+    var redraftToolbar = '';
+    if (state.redraft.enabled && (state.redraft.status === 'idle' || state.redraft.status === 'completed')) {
+      redraftToolbar =
+        '<div class="zws-llm-toolbar">' +
+          '<button type="button" class="zws-action-link zws-action-link--primary" data-zws-redraft-start>' +
+            (state.redraft.status === 'completed' ? 'Run redraft again' : 'Generate redraft') +
+          '</button>' +
+        '</div>';
+    }
+
+    state.llmEl.innerHTML =
+      '<div class="zws-llm" id="workspace-llm">' +
+        '<section class="zws-llm-panel" id="zws-explain-panel" aria-label="Explanation workspace">' +
+          '<div class="zws-llm-panel-header">' +
+            '<div>' +
+              '<div class="zws-llm-panel-title">Explanation</div>' +
+              '<div class="zws-llm-panel-sub">Finding context, regulatory reason, evidence, risk, recommended action</div>' +
+            '</div>' +
+            jobStatusHtml(state.explain.enabled ? state.explain.status : 'idle') +
+          '</div>' +
+          explainToolbar +
+          '<div class="zws-llm-body">' + renderExplainBody() + '</div>' +
+        '</section>' +
+        '<section class="zws-llm-panel" id="zws-redraft-panel" aria-label="Redraft workspace">' +
+          '<div class="zws-llm-panel-header">' +
+            '<div>' +
+              '<div class="zws-llm-panel-title">Redraft</div>' +
+              '<div class="zws-llm-panel-sub">Original vs proposed comparison · copy / download where supported</div>' +
+            '</div>' +
+            jobStatusHtml(state.redraft.enabled ? state.redraft.status : 'idle') +
+          '</div>' +
+          redraftToolbar +
+          '<div class="zws-llm-body">' + renderRedraftBody() + '</div>' +
+        '</section>' +
+      '</div>';
+
+    bindLlmEvents();
+  }
+
+  function bindLlmEvents() {
+    if (!state.llmEl) return;
+    state.llmEl.querySelectorAll('[data-zws-explain-start], [data-zws-explain-retry]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (typeof state.onExplainRequest === 'function') state.onExplainRequest();
+      });
+    });
+    state.llmEl.querySelectorAll('[data-zws-redraft-start], [data-zws-redraft-retry]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (typeof state.onRedraftRequest === 'function') state.onRedraftRequest();
+      });
+    });
+    state.llmEl.querySelectorAll('[data-zws-copy-redraft]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var idx = parseInt(btn.getAttribute('data-zws-copy-redraft'), 10);
+        var items = (state.redraft.data && state.redraft.data.redrafts) || [];
+        var text = (items[idx] && items[idx].ai_draft_text) || '';
+        if (typeof state.onCopyRedraft === 'function') state.onCopyRedraft(text, idx);
+      });
+    });
+    state.llmEl.querySelectorAll('[data-zws-download-redraft]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (typeof state.onDownloadRedraft === 'function') state.onDownloadRedraft();
+      });
+    });
+  }
+
+  function setExplainState(patch) {
+    patch = patch || {};
+    Object.keys(patch).forEach(function (k) { state.explain[k] = patch[k]; });
+    renderLlmPanels();
+  }
+
+  function setRedraftState(patch) {
+    patch = patch || {};
+    Object.keys(patch).forEach(function (k) { state.redraft[k] = patch[k]; });
+    renderLlmPanels();
+  }
+
+  function resetLlmPanels() {
+    state.explain = { status: 'idle', enabled: false, error: null, elapsedSec: 0, data: null };
+    state.redraft = { status: 'idle', enabled: false, error: null, elapsedSec: 0, data: null, sourceContext: null };
+    state.documentRisk = null;
+    if (state.llmEl) state.llmEl.innerHTML = '';
   }
 
   function init(options) {
     options = options || {};
     state.mountEl = document.getElementById(options.mountId || 'zws-mount');
     state.overviewEl = document.getElementById(options.overviewId || 'workspace-overview-mount');
+    state.llmEl = document.getElementById(options.llmId || 'workspace-llm-mount');
     state.onPlaceholderNav = options.onPlaceholderNav || null;
     state.onExitSandbox = options.onExitSandbox || null;
+    state.onExplainRequest = options.onExplainRequest || null;
+    state.onRedraftRequest = options.onRedraftRequest || null;
+    state.onCopyRedraft = options.onCopyRedraft || null;
+    state.onDownloadRedraft = options.onDownloadRedraft || null;
     state.activeNav = options.activeNav || 'workspace';
     document.body.classList.add('zws-shell-active');
     renderShell();
@@ -298,6 +579,7 @@
     if (ctx.documentType !== undefined) state.documentType = ctx.documentType;
     if (ctx.evaluationStatus !== undefined) state.evaluationStatus = ctx.evaluationStatus;
     if (ctx.verdict !== undefined) state.verdict = ctx.verdict;
+    if (ctx.documentRisk !== undefined) state.documentRisk = ctx.documentRisk;
     renderShell();
   }
 
@@ -307,9 +589,16 @@
   }
 
   function showOverviewMode(mode) {
-    if (mode === 'auth') renderOverviewAuth();
-    else if (mode === 'upload') renderOverviewUpload();
-    else if (mode === 'evaluating') renderOverviewEvaluating();
+    if (mode === 'auth') {
+      resetLlmPanels();
+      renderOverviewAuth();
+    } else if (mode === 'upload') {
+      resetLlmPanels();
+      renderOverviewUpload();
+    } else if (mode === 'evaluating') {
+      resetLlmPanels();
+      renderOverviewEvaluating();
+    }
   }
 
   function parseDocumentTypeFromReport(reportData) {
@@ -322,6 +611,23 @@
     return null;
   }
 
+  function enableLlmForResult(opts) {
+    opts = opts || {};
+    state.documentRisk = opts.documentRisk || null;
+    state.explain.enabled = !!opts.showExplain;
+    state.explain.status = 'idle';
+    state.explain.error = null;
+    state.explain.data = null;
+    state.explain.elapsedSec = 0;
+    state.redraft.enabled = !!opts.showRedraft;
+    state.redraft.status = 'idle';
+    state.redraft.error = null;
+    state.redraft.data = null;
+    state.redraft.elapsedSec = 0;
+    state.redraft.sourceContext = opts.sourceContext || null;
+    renderLlmPanels();
+  }
+
   global.WorkspaceShell = {
     init: init,
     setContext: setContext,
@@ -329,6 +635,11 @@
     showOverviewMode: showOverviewMode,
     renderOverviewResult: renderOverviewResult,
     parseDocumentTypeFromReport: parseDocumentTypeFromReport,
+    setExplainState: setExplainState,
+    setRedraftState: setRedraftState,
+    resetLlmPanels: resetLlmPanels,
+    enableLlmForResult: enableLlmForResult,
+    scrollToLlmPanel: scrollToLlmPanel,
     NAV_ITEMS: NAV_ITEMS
   };
 })(window);

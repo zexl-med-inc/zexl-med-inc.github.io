@@ -374,6 +374,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 
     <div id="eval-result-content">
 
+    <div id="workspace-llm-mount" class="no-print"></div>
+
     <div id="printable-report">
 
     <div class="how-to-read">
@@ -550,10 +552,21 @@ function syncWorkspaceForResult(d) {
     documentName: (d.audit_metadata && d.audit_metadata.file_name) || (selectedFile && selectedFile.name) || null,
     documentType: docType,
     evaluationStatus: 'complete',
-    verdict: d.decision
+    verdict: d.decision,
+    documentRisk: (d.report && d.report.risk) || null
   });
   const showExplain = EXPLAIN_RELEVANT.includes(d.decision);
+  const showRedraft = REDRAFT_RELEVANT.includes(d.decision);
   const hasExpert = !!(d.expert_review_url);
+  const sourceContext = (d.evidence_trace && d.evidence_trace.length)
+    ? d.evidence_trace.slice(0, 5).join('\n')
+    : ((d.report && d.report.basis) || '');
+  WorkspaceShell.enableLlmForResult({
+    showExplain: showExplain,
+    showRedraft: showRedraft,
+    documentRisk: (d.report && d.report.risk) || null,
+    sourceContext: sourceContext
+  });
   WorkspaceShell.renderOverviewResult({
     decision: d.decision,
     explanation: d.explanation,
@@ -561,19 +574,37 @@ function syncWorkspaceForResult(d) {
     review_status: d.review_status,
     nextActionFixed: FIXED_ACTIONS[d.decision] || '',
     showExplain: showExplain,
-    showRedraft: REDRAFT_RELEVANT.includes(d.decision),
+    showRedraft: showRedraft,
     showExpert: hasExpert,
     expertLabel: d.expert_review_available ? 'Open Expert Review' : 'Request Expert Review'
   });
+}
+
+function copyRedraftText(text) {
+  if (!text) return;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function() {
+      showToast('Redraft copied to clipboard', true);
+    }).catch(function() {
+      showToast('Could not copy to clipboard', false);
+    });
+  } else {
+    showToast('Clipboard not available in this browser', false);
+  }
 }
 
 window.addEventListener('DOMContentLoaded', () => {
   WorkspaceShell.init({
     mountId: 'zws-mount',
     overviewId: 'workspace-overview-mount',
+    llmId: 'workspace-llm-mount',
     activeNav: 'workspace',
     onExitSandbox: exitSandbox,
-    onPlaceholderNav: function(msg) { showToast(msg, false); }
+    onPlaceholderNav: function(msg) { showToast(msg, false); },
+    onExplainRequest: function() { startExplanation(); },
+    onRedraftRequest: function() { startRedraft(); },
+    onCopyRedraft: function(text) { copyRedraftText(text); },
+    onDownloadRedraft: function() { downloadReportJson(); }
   });
   const stored = localStorage.getItem('zexl_api_key');
   if (stored) {
@@ -800,7 +831,7 @@ function clearRedraftPanels() {
   redraftResult = null;
 }
 
-async function pollAsyncJob(statusPath, resultPath, panelId, errorId, onSuccess) {
+async function pollAsyncJob(statusPath, resultPath, panelId, errorId, onSuccess, onWorkspaceProgress) {
   const panel = document.getElementById(panelId);
   const errorEl = document.getElementById(errorId);
   const elapsedEl = panel.querySelector('.job-elapsed');
@@ -808,7 +839,9 @@ async function pollAsyncJob(statusPath, resultPath, panelId, errorId, onSuccess)
   panel.classList.remove('hidden');
   const start = Date.now();
   for (let i = 0; i < 120; i++) {
-    if (elapsedEl) elapsedEl.textContent = Math.floor((Date.now() - start) / 1000) + 's elapsed';
+    const elapsedSec = Math.floor((Date.now() - start) / 1000);
+    if (elapsedEl) elapsedEl.textContent = elapsedSec + 's elapsed';
+    if (typeof onWorkspaceProgress === 'function') onWorkspaceProgress(elapsedSec);
     const sr = await fetch(API_BASE + statusPath, { headers: { 'X-API-Key': apiKey } });
     const st = await sr.json().catch(function() { return {}; });
     if (st.status === 'completed') {
@@ -819,25 +852,32 @@ async function pollAsyncJob(statusPath, resultPath, panelId, errorId, onSuccess)
         onSuccess(body);
         return;
       }
-      errorEl.textContent = apiErrorDetail(body, 'Could not load job result.');
+      const errMsg = apiErrorDetail(body, 'Could not load job result.');
+      errorEl.textContent = errMsg;
       errorEl.classList.remove('hidden');
+      if (typeof onWorkspaceProgress === 'function') onWorkspaceProgress(elapsedSec, 'failed', errMsg);
       return;
     }
     if (st.status === 'failed') {
       panel.classList.add('hidden');
-      errorEl.textContent = st.error || 'Job failed. Please try again or contact hello@zexlmed.com';
+      const errMsg = st.error || 'Job failed. Please try again or contact hello@zexlmed.com';
+      errorEl.textContent = errMsg;
       errorEl.classList.remove('hidden');
+      if (typeof onWorkspaceProgress === 'function') onWorkspaceProgress(elapsedSec, 'failed', errMsg);
       return;
     }
     await new Promise(function(r) { setTimeout(r, 2500); });
   }
   panel.classList.add('hidden');
-  errorEl.textContent = 'Timed out waiting for the job to complete. Please try again.';
+  const timeoutMsg = 'Timed out waiting for the job to complete. Please try again.';
+  errorEl.textContent = timeoutMsg;
   errorEl.classList.remove('hidden');
+  if (typeof onWorkspaceProgress === 'function') onWorkspaceProgress(120 * 2.5, 'failed', timeoutMsg);
 }
 
 function renderExplanations(data) {
   explanationResult = data;
+  WorkspaceShell.setExplainState({ status: 'completed', data: data, error: null });
   const container = document.getElementById('explain-results');
   container.innerHTML = '';
   const items = data.explanations || [];
@@ -890,6 +930,7 @@ function fieldHtml(label, value) {
 
 function renderRedrafts(data) {
   redraftResult = data;
+  WorkspaceShell.setRedraftState({ status: 'completed', data: data, error: null });
   const container = document.getElementById('redraft-results');
   container.innerHTML = '';
   const items = data.redrafts || [];
@@ -933,6 +974,8 @@ async function startExplanation() {
   btn.disabled = true;
   clearRedraftPanels();
   clearExplainPanels();
+  WorkspaceShell.scrollToLlmPanel('explain');
+  WorkspaceShell.setExplainState({ status: 'loading', error: null, data: null, elapsedSec: 0 });
   try {
     const r = await fetch(API_BASE + '/explain', {
       method: 'POST',
@@ -946,16 +989,26 @@ async function startExplanation() {
         '/explain/result/' + d.job_id,
         'explain-job-panel',
         'explain-error',
-        renderExplanations
+        renderExplanations,
+        function(elapsedSec, failStatus, errMsg) {
+          if (failStatus === 'failed') {
+            WorkspaceShell.setExplainState({ status: 'failed', error: errMsg, elapsedSec: elapsedSec });
+          } else {
+            WorkspaceShell.setExplainState({ status: 'loading', elapsedSec: elapsedSec });
+          }
+        }
       );
     } else {
-      document.getElementById('explain-error').textContent =
-        apiErrorDetail(d, 'Explanation request failed. Please try again.');
+      const errMsg = apiErrorDetail(d, 'Explanation request failed. Please try again.');
+      document.getElementById('explain-error').textContent = errMsg;
       document.getElementById('explain-error').classList.remove('hidden');
+      WorkspaceShell.setExplainState({ status: 'failed', error: errMsg });
     }
   } catch (e) {
-    document.getElementById('explain-error').textContent = 'Connection error. Please try again.';
+    const errMsg = 'Connection error. Please try again.';
+    document.getElementById('explain-error').textContent = errMsg;
     document.getElementById('explain-error').classList.remove('hidden');
+    WorkspaceShell.setExplainState({ status: 'failed', error: errMsg });
   }
   btn.disabled = !EXPLAIN_RELEVANT.includes(currentReportData && currentReportData.decision);
 }
@@ -966,6 +1019,8 @@ async function startRedraft() {
   btn.disabled = true;
   clearExplainPanels();
   clearRedraftPanels();
+  WorkspaceShell.scrollToLlmPanel('redraft');
+  WorkspaceShell.setRedraftState({ status: 'loading', error: null, data: null, elapsedSec: 0 });
   try {
     const r = await fetch(API_BASE + '/redraft', {
       method: 'POST',
@@ -979,16 +1034,26 @@ async function startRedraft() {
         '/redraft/result/' + d.job_id,
         'redraft-job-panel',
         'redraft-error',
-        renderRedrafts
+        renderRedrafts,
+        function(elapsedSec, failStatus, errMsg) {
+          if (failStatus === 'failed') {
+            WorkspaceShell.setRedraftState({ status: 'failed', error: errMsg, elapsedSec: elapsedSec });
+          } else {
+            WorkspaceShell.setRedraftState({ status: 'loading', elapsedSec: elapsedSec });
+          }
+        }
       );
     } else {
-      document.getElementById('redraft-error').textContent =
-        apiErrorDetail(d, 'Redraft request failed. Please try again.');
+      const errMsg = apiErrorDetail(d, 'Redraft request failed. Please try again.');
+      document.getElementById('redraft-error').textContent = errMsg;
       document.getElementById('redraft-error').classList.remove('hidden');
+      WorkspaceShell.setRedraftState({ status: 'failed', error: errMsg });
     }
   } catch (e) {
-    document.getElementById('redraft-error').textContent = 'Connection error. Please try again.';
+    const errMsg = 'Connection error. Please try again.';
+    document.getElementById('redraft-error').textContent = errMsg;
     document.getElementById('redraft-error').classList.remove('hidden');
+    WorkspaceShell.setRedraftState({ status: 'failed', error: errMsg });
   }
   btn.disabled = !REDRAFT_RELEVANT.includes(currentReportData && currentReportData.decision);
 }
@@ -1054,6 +1119,7 @@ function resetToUpload() {
   resetLlmPanels();
   document.getElementById('file-input').value = '';
   document.getElementById('filename-display').classList.add('hidden');
+  WorkspaceShell.resetLlmPanels();
   showState('upload');
 }
 
