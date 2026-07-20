@@ -29,6 +29,7 @@
     mountEl: null,
     overviewEl: null,
     llmEl: null,
+    findingsEl: null,
     onPlaceholderNav: null,
     onExitSandbox: null,
     onExplainRequest: null,
@@ -55,6 +56,17 @@
       elapsedSec: 0,
       data: null,
       sourceContext: null
+    },
+    findings: {
+      status: 'idle',
+      error: null,
+      items: null,
+      selectedId: null,
+      filters: {
+        severity: 'ALL',
+        review_status: 'ALL',
+        clause: 'ALL'
+      }
     }
   };
 
@@ -261,16 +273,23 @@
           '</div>' +
         '</div>' +
         '<div class="zws-overview-actions">' +
+          '<button type="button" class="zws-action-link" id="zws-link-findings">Findings</button>' +
           '<button type="button" class="' + explainCls + '" id="zws-link-explain"' + explainDis + '>Explanation</button>' +
           '<button type="button" class="' + redraftCls + '" id="zws-link-redraft"' + redraftDis + '>Redraft</button>' +
           '<button type="button" class="' + expertCls + '" id="zws-link-expert"' + expertDis + '>' + escapeHtml(expertLabel) + '</button>' +
         '</div>' +
       '</section>';
 
+    var findingsBtn = state.overviewEl.querySelector('#zws-link-findings');
     var explainBtn = state.overviewEl.querySelector('#zws-link-explain');
     var redraftBtn = state.overviewEl.querySelector('#zws-link-redraft');
     var expertBtn = state.overviewEl.querySelector('#zws-link-expert');
 
+    if (findingsBtn) {
+      findingsBtn.addEventListener('click', function () {
+        scrollToFindings();
+      });
+    }
     if (explainBtn && showExplain) {
       explainBtn.addEventListener('click', function () {
         scrollToLlmPanel('explain');
@@ -292,6 +311,7 @@
       });
     }
 
+    renderFindingsPanel();
     renderLlmPanels();
   }
 
@@ -299,6 +319,317 @@
     var id = which === 'redraft' ? 'zws-redraft-panel' : 'zws-explain-panel';
     var target = document.getElementById(id) || state.llmEl;
     if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function scrollToFindings() {
+    var target = document.getElementById('workspace-findings') || state.findingsEl;
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function reviewStatusBadgeHtml(status) {
+    var s = String(status || 'PENDING').toUpperCase();
+    var isReviewed = s === 'REVIEWED';
+    var label = isReviewed ? 'Reviewed' : 'Needs expert review';
+    var icon = isReviewed ? '✓' : '○';
+    var cls = isReviewed ? 'zws-review-badge--reviewed' : 'zws-review-badge--pending';
+    return (
+      '<span class="zws-review-badge ' + cls + '" title="' + escapeHtml(label) + '">' +
+        '<span class="zws-review-icon" aria-hidden="true">' + icon + '</span>' +
+        '<span class="zws-review-text">' + escapeHtml(label) + '</span>' +
+      '</span>'
+    );
+  }
+
+  function uniqueSorted(values) {
+    var seen = {};
+    var out = [];
+    (values || []).forEach(function (v) {
+      var key = String(v == null ? '' : v);
+      if (!key || seen[key]) return;
+      seen[key] = true;
+      out.push(key);
+    });
+    out.sort();
+    return out;
+  }
+
+  function filteredFindings() {
+    var items = state.findings.items || [];
+    var f = state.findings.filters || {};
+    return items.filter(function (item) {
+      if (f.severity && f.severity !== 'ALL' && String(item.severity) !== f.severity) return false;
+      if (f.review_status && f.review_status !== 'ALL' && String(item.review_status) !== f.review_status) return false;
+      if (f.clause && f.clause !== 'ALL' && String(item.clause) !== f.clause) return false;
+      return true;
+    });
+  }
+
+  function selectedFinding() {
+    var id = state.findings.selectedId;
+    if (!id || !state.findings.items) return null;
+    for (var i = 0; i < state.findings.items.length; i++) {
+      if (state.findings.items[i].finding_id === id) return state.findings.items[i];
+    }
+    return null;
+  }
+
+  function ensureFindingsSelection(visible) {
+    if (!visible.length) {
+      state.findings.selectedId = null;
+      return;
+    }
+    var stillVisible = visible.some(function (item) {
+      return item.finding_id === state.findings.selectedId;
+    });
+    if (!stillVisible) {
+      state.findings.selectedId = visible[0].finding_id;
+    }
+  }
+
+  function renderFindingsEvidence(evidence) {
+    var list = Array.isArray(evidence) ? evidence : [];
+    if (!list.length) {
+      return '<p class="zws-findings-empty-inline">No evidence excerpts are available for this finding.</p>';
+    }
+    var html = '<ul class="zws-evidence-list">';
+    list.forEach(function (ev, idx) {
+      var text = ev && typeof ev.text === 'string' ? ev.text : '';
+      html +=
+        '<li class="zws-evidence-item">' +
+          '<div class="zws-evidence-index" aria-hidden="true">E' + String(idx + 1) + '</div>' +
+          '<div class="zws-evidence-text">' + escapeHtml(text || '(empty excerpt)') + '</div>' +
+        '</li>';
+    });
+    html += '</ul>';
+    return html;
+  }
+
+  function renderFindingsReasonCodes(codes) {
+    var list = Array.isArray(codes) ? codes : [];
+    if (!list.length) {
+      return '<p class="zws-findings-empty-inline">No reason codes.</p>';
+    }
+    return (
+      '<ul class="zws-reason-list">' +
+        list.map(function (code) {
+          return '<li class="zws-reason-chip"><code>' + escapeHtml(String(code)) + '</code></li>';
+        }).join('') +
+      '</ul>'
+    );
+  }
+
+  function renderFindingsDetail(item) {
+    if (!item) {
+      return '<p class="zws-findings-empty-inline">Select a finding to view details and evidence.</p>';
+    }
+    return (
+      '<div class="zws-findings-detail-inner">' +
+        '<div class="zws-findings-detail-head">' +
+          '<div class="zws-findings-detail-clause">' + escapeHtml(item.clause || '—') + '</div>' +
+          '<div class="zws-findings-detail-badges">' +
+            verdictPillHtml(item.severity) +
+            reviewStatusBadgeHtml(item.review_status) +
+          '</div>' +
+        '</div>' +
+        fieldBlock('Summary', item.summary) +
+        '<div class="zws-field">' +
+          '<div class="zws-field-label">Evidence</div>' +
+          renderFindingsEvidence(item.evidence) +
+        '</div>' +
+        '<div class="zws-field">' +
+          '<div class="zws-field-label">Reason codes</div>' +
+          renderFindingsReasonCodes(item.reason_codes) +
+        '</div>' +
+        fieldBlock('Recommended action', item.recommended_action) +
+        fieldBlock('Finding ID', item.finding_id) +
+      '</div>'
+    );
+  }
+
+  function renderFindingsFilters(items) {
+    var severities = uniqueSorted(items.map(function (i) { return i.severity; }));
+    var clauses = uniqueSorted(items.map(function (i) { return i.clause; }));
+    var f = state.findings.filters;
+
+    function optionHtml(value, label, selected) {
+      return (
+        '<option value="' + escapeHtml(value) + '"' +
+        (selected === value ? ' selected' : '') + '>' +
+        escapeHtml(label) +
+        '</option>'
+      );
+    }
+
+    var sevOpts = optionHtml('ALL', 'All severities', f.severity) +
+      severities.map(function (s) { return optionHtml(s, s, f.severity); }).join('');
+    var revOpts =
+      optionHtml('ALL', 'All review statuses', f.review_status) +
+      optionHtml('PENDING', 'Needs expert review', f.review_status) +
+      optionHtml('REVIEWED', 'Reviewed', f.review_status);
+    var clauseOpts = optionHtml('ALL', 'All clauses', f.clause) +
+      clauses.map(function (c) { return optionHtml(c, c, f.clause); }).join('');
+
+    return (
+      '<div class="zws-findings-filters" role="group" aria-label="Finding filters">' +
+        '<label class="zws-filter">' +
+          '<span class="zws-filter-label">Severity</span>' +
+          '<select data-zws-filter="severity" aria-label="Filter by severity">' + sevOpts + '</select>' +
+        '</label>' +
+        '<label class="zws-filter">' +
+          '<span class="zws-filter-label">Review status</span>' +
+          '<select data-zws-filter="review_status" aria-label="Filter by review status">' + revOpts + '</select>' +
+        '</label>' +
+        '<label class="zws-filter">' +
+          '<span class="zws-filter-label">Clause</span>' +
+          '<select data-zws-filter="clause" aria-label="Filter by clause">' + clauseOpts + '</select>' +
+        '</label>' +
+      '</div>'
+    );
+  }
+
+  function renderFindingsList(visible) {
+    if (!visible.length) {
+      return '<p class="zws-findings-empty-inline">No findings match the current filters.</p>';
+    }
+    var html = '<ul class="zws-findings-list" role="listbox" aria-label="Findings">';
+    visible.forEach(function (item) {
+      var selected = item.finding_id === state.findings.selectedId;
+      var evidenceCount = Array.isArray(item.evidence) ? item.evidence.length : 0;
+      html +=
+        '<li role="option" aria-selected="' + (selected ? 'true' : 'false') + '">' +
+          '<button type="button" class="zws-finding-row' + (selected ? ' is-selected' : '') + '"' +
+            ' data-zws-finding-id="' + escapeHtml(item.finding_id) + '"' +
+            ' aria-label="' + escapeHtml((item.clause || 'Finding') + ', ' + (item.severity || '') + ', ' + (item.review_status || '')) + '">' +
+            '<div class="zws-finding-row-top">' +
+              '<span class="zws-finding-row-clause">' + escapeHtml(item.clause || '—') + '</span>' +
+              reviewStatusBadgeHtml(item.review_status) +
+            '</div>' +
+            '<div class="zws-finding-row-mid">' +
+              verdictPillHtml(item.severity) +
+              '<span class="zws-finding-row-meta">' +
+                escapeHtml(String(evidenceCount) + (evidenceCount === 1 ? ' evidence excerpt' : ' evidence excerpts')) +
+              '</span>' +
+            '</div>' +
+            '<div class="zws-finding-row-summary">' + escapeHtml(item.summary || '') + '</div>' +
+          '</button>' +
+        '</li>';
+    });
+    html += '</ul>';
+    return html;
+  }
+
+  function renderFindingsBody() {
+    var st = state.findings;
+    if (st.status === 'idle') {
+      return '<p class="zws-llm-idle">Findings appear here after evaluation completes.</p>';
+    }
+    if (st.status === 'loading') {
+      return (
+        '<div class="zws-llm-loading">' +
+          '<div class="zws-llm-spinner" aria-hidden="true"></div>' +
+          '<div class="zws-llm-loading-msg">Loading findings…</div>' +
+        '</div>'
+      );
+    }
+    if (st.status === 'failed') {
+      return '<div class="zws-llm-error">' + escapeHtml(st.error || 'Could not load findings.') + '</div>';
+    }
+    var items = st.items || [];
+    if (!items.length) {
+      return (
+        '<div class="zws-findings-empty">' +
+          '<div class="zws-findings-empty-title">No findings for this document</div>' +
+          '<p class="zws-findings-empty-copy">The evaluation completed without triggered clause findings. Overview and other workspace panels remain available.</p>' +
+        '</div>'
+      );
+    }
+    var visible = filteredFindings();
+    ensureFindingsSelection(visible);
+    var selected = selectedFinding();
+    return (
+      renderFindingsFilters(items) +
+      '<div class="zws-findings-layout">' +
+        '<div class="zws-findings-list-pane">' +
+          '<div class="zws-findings-count">' +
+            escapeHtml(String(visible.length) + ' of ' + String(items.length) + ' finding' + (items.length === 1 ? '' : 's')) +
+          '</div>' +
+          renderFindingsList(visible) +
+        '</div>' +
+        '<div class="zws-findings-detail-pane" aria-live="polite">' +
+          '<div class="zws-findings-detail-title">Finding detail</div>' +
+          renderFindingsDetail(selected) +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  function renderFindingsPanel() {
+    if (!state.findingsEl) return;
+    state.findingsEl.innerHTML =
+      '<section class="zws-findings" id="workspace-findings" aria-label="Findings and evidence">' +
+        '<div class="zws-llm-head">' +
+          '<div>' +
+            '<div class="zws-llm-kicker">Findings / Evidence</div>' +
+            '<h2 class="zws-llm-title">Clause findings</h2>' +
+            '<p class="zws-llm-sub">Triggered findings from the evaluation report, with sentence-level evidence excerpts when available.</p>' +
+          '</div>' +
+        '</div>' +
+        '<div class="zws-findings-body">' + renderFindingsBody() + '</div>' +
+      '</section>';
+    wireFindingsPanel();
+  }
+
+  function wireFindingsPanel() {
+    if (!state.findingsEl) return;
+    state.findingsEl.querySelectorAll('[data-zws-filter]').forEach(function (sel) {
+      sel.addEventListener('change', function () {
+        var key = sel.getAttribute('data-zws-filter');
+        if (!key) return;
+        state.findings.filters[key] = sel.value || 'ALL';
+        renderFindingsPanel();
+      });
+    });
+    state.findingsEl.querySelectorAll('[data-zws-finding-id]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        state.findings.selectedId = btn.getAttribute('data-zws-finding-id');
+        renderFindingsPanel();
+      });
+    });
+  }
+
+  function resetFindingsPanel() {
+    state.findings = {
+      status: 'idle',
+      error: null,
+      items: null,
+      selectedId: null,
+      filters: { severity: 'ALL', review_status: 'ALL', clause: 'ALL' }
+    };
+    if (state.findingsEl) state.findingsEl.innerHTML = '';
+  }
+
+  function setFindingsState(patch) {
+    patch = patch || {};
+    Object.keys(patch).forEach(function (k) {
+      if (k === 'filters' && patch.filters) {
+        Object.keys(patch.filters).forEach(function (fk) {
+          state.findings.filters[fk] = patch.filters[fk];
+        });
+      } else {
+        state.findings[k] = patch[k];
+      }
+    });
+    renderFindingsPanel();
+  }
+
+  function setFindingsData(payload) {
+    var findings = (payload && Array.isArray(payload.findings)) ? payload.findings : [];
+    state.findings.status = 'completed';
+    state.findings.error = null;
+    state.findings.items = findings;
+    state.findings.selectedId = findings.length ? findings[0].finding_id : null;
+    state.findings.filters = { severity: 'ALL', review_status: 'ALL', clause: 'ALL' };
+    renderFindingsPanel();
   }
 
   function jobStatusHtml(status) {
@@ -557,6 +888,7 @@
     state.mountEl = document.getElementById(options.mountId || 'zws-mount');
     state.overviewEl = document.getElementById(options.overviewId || 'workspace-overview-mount');
     state.llmEl = document.getElementById(options.llmId || 'workspace-llm-mount');
+    state.findingsEl = document.getElementById(options.findingsId || 'workspace-findings-mount');
     state.onPlaceholderNav = options.onPlaceholderNav || null;
     state.onExitSandbox = options.onExitSandbox || null;
     state.onExplainRequest = options.onExplainRequest || null;
@@ -590,12 +922,15 @@
 
   function showOverviewMode(mode) {
     if (mode === 'auth') {
+      resetFindingsPanel();
       resetLlmPanels();
       renderOverviewAuth();
     } else if (mode === 'upload') {
+      resetFindingsPanel();
       resetLlmPanels();
       renderOverviewUpload();
     } else if (mode === 'evaluating') {
+      resetFindingsPanel();
       resetLlmPanels();
       renderOverviewEvaluating();
     }
@@ -640,6 +975,10 @@
     resetLlmPanels: resetLlmPanels,
     enableLlmForResult: enableLlmForResult,
     scrollToLlmPanel: scrollToLlmPanel,
+    setFindingsState: setFindingsState,
+    setFindingsData: setFindingsData,
+    resetFindingsPanel: resetFindingsPanel,
+    scrollToFindings: scrollToFindings,
     NAV_ITEMS: NAV_ITEMS
   };
 })(window);

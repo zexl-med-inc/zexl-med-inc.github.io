@@ -374,6 +374,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 
     <div id="eval-result-content">
 
+    <div id="workspace-findings-mount" class="no-print"></div>
+
     <div id="workspace-llm-mount" class="no-print"></div>
 
     <div id="printable-report">
@@ -578,6 +580,33 @@ function syncWorkspaceForResult(d) {
     showExpert: hasExpert,
     expertLabel: d.expert_review_available ? 'Open Expert Review' : 'Request Expert Review'
   });
+  loadWorkspaceFindings(d.report_id);
+}
+
+async function loadWorkspaceFindings(reportId) {
+  if (!reportId || typeof WorkspaceShell === 'undefined') return;
+  WorkspaceShell.setFindingsState({ status: 'loading', error: null });
+  try {
+    const r = await fetch(API_BASE + '/report/' + encodeURIComponent(reportId) + '/findings', {
+      headers: { 'X-API-Key': apiKey }
+    });
+    if (!r.ok) {
+      let detail = 'Could not load findings (HTTP ' + r.status + ').';
+      try {
+        const errBody = await r.json();
+        if (errBody && errBody.detail) detail = String(errBody.detail);
+      } catch (_e) { /* keep default */ }
+      WorkspaceShell.setFindingsState({ status: 'failed', error: detail });
+      return;
+    }
+    const body = await r.json();
+    WorkspaceShell.setFindingsData(body);
+  } catch (_e) {
+    WorkspaceShell.setFindingsState({
+      status: 'failed',
+      error: 'Could not load findings. Check your connection and try again.'
+    });
+  }
 }
 
 function copyRedraftText(text) {
@@ -597,6 +626,7 @@ window.addEventListener('DOMContentLoaded', () => {
   WorkspaceShell.init({
     mountId: 'zws-mount',
     overviewId: 'workspace-overview-mount',
+    findingsId: 'workspace-findings-mount',
     llmId: 'workspace-llm-mount',
     activeNav: 'workspace',
     onExitSandbox: exitSandbox,
@@ -1120,6 +1150,7 @@ function resetToUpload() {
   document.getElementById('file-input').value = '';
   document.getElementById('filename-display').classList.add('hidden');
   WorkspaceShell.resetLlmPanels();
+  WorkspaceShell.resetFindingsPanel();
   showState('upload');
 }
 
