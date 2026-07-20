@@ -901,6 +901,20 @@
   margin: 0;
 }
 
+.zws-findings-review-note {
+  font-size: 0.8rem;
+  color: var(--zws-text-muted);
+  line-height: 1.5;
+  margin: 0 0 0.75rem;
+}
+
+.zws-findings-expert-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+
 @media (max-width: 860px) {
   .zws-findings-layout {
     grid-template-columns: 1fr;

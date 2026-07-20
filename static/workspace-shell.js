@@ -36,12 +36,18 @@
     onRedraftRequest: null,
     onCopyRedraft: null,
     onDownloadRedraft: null,
+    onExpertReview: null,
+    onExpertReviewInfo: null,
     activeNav: 'workspace',
     documentName: null,
     documentType: null,
     evaluationStatus: 'idle',
     verdict: null,
     documentRisk: null,
+    expert: {
+      url: null,
+      available: false
+    },
     explain: {
       status: 'idle',
       enabled: false,
@@ -304,15 +310,41 @@
     }
     if (expertBtn && showExpert) {
       expertBtn.addEventListener('click', function () {
-        var legacy = document.getElementById('expert-review-btn');
-        if (legacy && typeof legacy.onclick === 'function') {
-          legacy.onclick();
-        }
+        invokeExpertReview();
       });
     }
 
     renderFindingsPanel();
     renderLlmPanels();
+  }
+
+  function invokeExpertReview() {
+    if (state.expert.available && state.expert.url) {
+      if (typeof state.onExpertReview === 'function') {
+        state.onExpertReview(state.expert.url);
+        return;
+      }
+    }
+    if (typeof state.onExpertReviewInfo === 'function') {
+      state.onExpertReviewInfo();
+      return;
+    }
+    var legacy = document.getElementById('expert-review-btn');
+    if (legacy && typeof legacy.onclick === 'function') {
+      legacy.onclick();
+    }
+  }
+
+  function expertReviewActionHtml(opts) {
+    opts = opts || {};
+    if (!state.expert.url) return '';
+    var label = state.expert.available ? 'Open Expert Review' : 'Expert Review access';
+    var cls = 'zws-action-link' + (opts.primary ? ' zws-action-link--primary' : '');
+    return (
+      '<button type="button" class="' + cls + '" data-zws-expert-open>' +
+        escapeHtml(label) +
+      '</button>'
+    );
   }
 
   function scrollToLlmPanel(which) {
@@ -422,6 +454,21 @@
     if (!item) {
       return '<p class="zws-findings-empty-inline">Select a finding to view details and evidence.</p>';
     }
+    var reviewNote = '';
+    if (String(item.review_status || '').toUpperCase() === 'PENDING') {
+      reviewNote =
+        '<p class="zws-findings-review-note">' +
+          'Needs expert review. Review status becomes Reviewed only after an expert submits feedback for this clause.' +
+        '</p>';
+    } else {
+      reviewNote =
+        '<p class="zws-findings-review-note">' +
+          'Reviewed — expert feedback is recorded for this clause.' +
+        '</p>';
+    }
+    var expertCta = state.expert.url
+      ? '<div class="zws-findings-expert-actions">' + expertReviewActionHtml({ primary: true }) + '</div>'
+      : '';
     return (
       '<div class="zws-findings-detail-inner">' +
         '<div class="zws-findings-detail-head">' +
@@ -431,6 +478,8 @@
             reviewStatusBadgeHtml(item.review_status) +
           '</div>' +
         '</div>' +
+        reviewNote +
+        expertCta +
         fieldBlock('Summary', item.summary) +
         '<div class="zws-field">' +
           '<div class="zws-field-label">Evidence</div>' +
@@ -565,14 +614,18 @@
 
   function renderFindingsPanel() {
     if (!state.findingsEl) return;
+    var expertToolbar = state.expert.url
+      ? '<div class="zws-llm-actions">' + expertReviewActionHtml({ primary: false }) + '</div>'
+      : '';
     state.findingsEl.innerHTML =
       '<section class="zws-findings" id="workspace-findings" aria-label="Findings and evidence">' +
         '<div class="zws-llm-head">' +
           '<div>' +
             '<div class="zws-llm-kicker">Findings / Evidence</div>' +
             '<h2 class="zws-llm-title">Clause findings</h2>' +
-            '<p class="zws-llm-sub">Triggered findings from the evaluation report, with sentence-level evidence excerpts when available.</p>' +
+            '<p class="zws-llm-sub">Triggered findings from the evaluation report, with sentence-level evidence excerpts when available. Review status reflects existing expert feedback only.</p>' +
           '</div>' +
+          expertToolbar +
         '</div>' +
         '<div class="zws-findings-body">' + renderFindingsBody() + '</div>' +
       '</section>';
@@ -595,6 +648,11 @@
         renderFindingsPanel();
       });
     });
+    state.findingsEl.querySelectorAll('[data-zws-expert-open]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        invokeExpertReview();
+      });
+    });
   }
 
   function resetFindingsPanel() {
@@ -606,6 +664,16 @@
       filters: { severity: 'ALL', review_status: 'ALL', clause: 'ALL' }
     };
     if (state.findingsEl) state.findingsEl.innerHTML = '';
+  }
+
+  function setExpertReview(opts) {
+    opts = opts || {};
+    state.expert.url = opts.url || null;
+    state.expert.available = !!opts.available;
+  }
+
+  function resetExpertReview() {
+    state.expert = { url: null, available: false };
   }
 
   function setFindingsState(patch) {
@@ -895,6 +963,8 @@
     state.onRedraftRequest = options.onRedraftRequest || null;
     state.onCopyRedraft = options.onCopyRedraft || null;
     state.onDownloadRedraft = options.onDownloadRedraft || null;
+    state.onExpertReview = options.onExpertReview || null;
+    state.onExpertReviewInfo = options.onExpertReviewInfo || null;
     state.activeNav = options.activeNav || 'workspace';
     document.body.classList.add('zws-shell-active');
     renderShell();
@@ -922,14 +992,17 @@
 
   function showOverviewMode(mode) {
     if (mode === 'auth') {
+      resetExpertReview();
       resetFindingsPanel();
       resetLlmPanels();
       renderOverviewAuth();
     } else if (mode === 'upload') {
+      resetExpertReview();
       resetFindingsPanel();
       resetLlmPanels();
       renderOverviewUpload();
     } else if (mode === 'evaluating') {
+      resetExpertReview();
       resetFindingsPanel();
       resetLlmPanels();
       renderOverviewEvaluating();
@@ -979,6 +1052,8 @@
     setFindingsData: setFindingsData,
     resetFindingsPanel: resetFindingsPanel,
     scrollToFindings: scrollToFindings,
+    setExpertReview: setExpertReview,
+    resetExpertReview: resetExpertReview,
     NAV_ITEMS: NAV_ITEMS
   };
 })(window);

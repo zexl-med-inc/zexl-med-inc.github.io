@@ -569,6 +569,10 @@ function syncWorkspaceForResult(d) {
     documentRisk: (d.report && d.report.risk) || null,
     sourceContext: sourceContext
   });
+  WorkspaceShell.setExpertReview({
+    url: d.expert_review_url || null,
+    available: d.expert_review_available === true
+  });
   WorkspaceShell.renderOverviewResult({
     decision: d.decision,
     explanation: d.explanation,
@@ -609,6 +613,18 @@ async function loadWorkspaceFindings(reportId) {
   }
 }
 
+let _findingsRefreshTimer = null;
+let _expertReviewOpened = false;
+
+function refreshFindingsAfterExpertReturn() {
+  if (!currentReportId || !_expertReviewOpened) return;
+  if (_findingsRefreshTimer) clearTimeout(_findingsRefreshTimer);
+  _findingsRefreshTimer = setTimeout(function() {
+    _expertReviewOpened = false;
+    loadWorkspaceFindings(currentReportId);
+  }, 400);
+}
+
 function copyRedraftText(text) {
   if (!text) return;
   if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -634,7 +650,22 @@ window.addEventListener('DOMContentLoaded', () => {
     onExplainRequest: function() { startExplanation(); },
     onRedraftRequest: function() { startRedraft(); },
     onCopyRedraft: function(text) { copyRedraftText(text); },
-    onDownloadRedraft: function() { downloadReportJson(); }
+    onDownloadRedraft: function() { downloadReportJson(); },
+    onExpertReview: function(url) {
+      if (url) {
+        _expertReviewOpened = true;
+        window.open(url, '_blank');
+      }
+    },
+    onExpertReviewInfo: function() { openExpertReviewInfo(); }
+  });
+  window.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible' && currentReportId) {
+      refreshFindingsAfterExpertReturn();
+    }
+  });
+  window.addEventListener('focus', function() {
+    if (currentReportId) refreshFindingsAfterExpertReturn();
   });
   const stored = localStorage.getItem('zexl_api_key');
   if (stored) {
@@ -1114,12 +1145,13 @@ function printReport() {
 
 function openExpertReview() {
   if (expertReviewUrl) {
+    _expertReviewOpened = true;
     window.open(expertReviewUrl, '_blank');
   }
 }
 
 function openExpertReviewInfo() {
-  alert('Expert Review is available to invited Expert Beta reviewers.\n\nIf you need access, contact hello@zexlmed.com');
+  showToast('Expert Review is available to invited Expert Beta reviewers. Contact hello@zexlmed.com if you need access.', false);
 }
 
 async function sendFeedback(clarity) {
@@ -1151,6 +1183,7 @@ function resetToUpload() {
   document.getElementById('filename-display').classList.add('hidden');
   WorkspaceShell.resetLlmPanels();
   WorkspaceShell.resetFindingsPanel();
+  WorkspaceShell.resetExpertReview();
   showState('upload');
 }
 
