@@ -52,6 +52,7 @@
       status: 'idle',
       enabled: false,
       error: null,
+      notice: null,
       elapsedSec: 0,
       data: null
     },
@@ -59,6 +60,7 @@
       status: 'idle',
       enabled: false,
       error: null,
+      notice: null,
       elapsedSec: 0,
       data: null,
       sourceContext: null
@@ -703,8 +705,9 @@
   function jobStatusHtml(status) {
     var labels = {
       idle: 'Idle',
-      loading: 'Loading',
+      loading: 'Processing',
       completed: 'Completed',
+      incomplete: 'Temporarily incomplete',
       failed: 'Failed'
     };
     return '<span class="zws-job-status zws-job-status--' + status + '">' +
@@ -731,12 +734,27 @@
           '<div class="zws-llm-spinner" aria-hidden="true"></div>' +
           '<div class="zws-llm-loading-msg">Generating explanation…</div>' +
           '<div class="zws-llm-loading-msg zws-llm-elapsed">' + escapeHtml(String(st.elapsedSec || 0)) + 's elapsed</div>' +
+          (st.notice
+            ? '<p class="zws-llm-notice" role="status">' + escapeHtml(st.notice) + '</p>'
+            : '') +
+        '</div>'
+      );
+    }
+    if (st.status === 'incomplete') {
+      return (
+        '<div class="zws-llm-incomplete" role="status">' +
+          escapeHtml(st.notice || 'This analysis is temporarily incomplete. You can retry when ready. Your evaluation verdict, findings, and evidence remain available.') +
+        '</div>' +
+        '<div class="zws-llm-toolbar">' +
+          '<button type="button" class="zws-action-link" data-zws-explain-retry>Retry explanation</button>' +
         '</div>'
       );
     }
     if (st.status === 'failed') {
       return (
-        '<div class="zws-llm-error">' + escapeHtml(st.error || 'Explanation failed.') + '</div>' +
+        '<div class="zws-llm-incomplete" role="status">' +
+          escapeHtml(st.notice || 'This analysis is temporarily incomplete. You can retry when ready. Your evaluation verdict, findings, and evidence remain available.') +
+        '</div>' +
         '<div class="zws-llm-toolbar">' +
           '<button type="button" class="zws-action-link" data-zws-explain-retry>Retry explanation</button>' +
         '</div>'
@@ -757,6 +775,13 @@
       var riskText = state.documentRisk
         ? 'Document risk: ' + state.documentRisk + (item.verdict ? ' · Finding verdict: ' + item.verdict : '')
         : (item.verdict || '');
+      var failureBlock = item.error
+        ? fieldBlock('Explanation unavailable', item.error) +
+          '<p class="zws-llm-empty" style="margin:0.25rem 0 0.75rem">Finding verdict remains unchanged. Use Retry explanation, or Expert Review.</p>' +
+          '<div class="zws-llm-toolbar" style="margin-bottom:0.75rem">' +
+            '<button type="button" class="zws-action-link" data-zws-explain-retry>Retry explanation</button>' +
+          '</div>'
+        : '';
       html +=
         '<article class="zws-finding-card">' +
           '<div class="zws-finding-head">' +
@@ -764,12 +789,13 @@
             (item.verdict ? verdictPillHtml(item.verdict) : '') +
           '</div>' +
           fieldBlock('Finding context', findingLabel + (item.scope ? ' · scope: ' + item.scope : '')) +
+          failureBlock +
           fieldBlock('Regulatory reason', item.C_regulatory_interpretation || item.A_why) +
           fieldBlock('Evidence', item.B_evidence_mapping) +
           fieldBlock('Risk', riskText) +
           fieldBlock('Recommended action', item.D_practical_recommendation) +
           fieldBlock('Why (A)', item.A_why && item.C_regulatory_interpretation ? item.A_why : null) +
-          (conf.confidence_score != null
+          (conf.confidence_score != null && !item.error
             ? fieldBlock('Confidence', 'Score: ' + String(conf.confidence_score) +
               (conf.basis ? ' · Basis: ' + conf.basis : '') +
               (conf.limitation ? ' · Limitation: ' + conf.limitation : ''))
@@ -793,12 +819,27 @@
           '<div class="zws-llm-spinner" aria-hidden="true"></div>' +
           '<div class="zws-llm-loading-msg">Generating redraft…</div>' +
           '<div class="zws-llm-loading-msg zws-llm-elapsed">' + escapeHtml(String(st.elapsedSec || 0)) + 's elapsed</div>' +
+          (st.notice
+            ? '<p class="zws-llm-notice" role="status">' + escapeHtml(st.notice) + '</p>'
+            : '') +
+        '</div>'
+      );
+    }
+    if (st.status === 'incomplete') {
+      return (
+        '<div class="zws-llm-incomplete" role="status">' +
+          escapeHtml(st.notice || 'This analysis is temporarily incomplete. You can retry when ready. Your evaluation verdict, findings, and evidence remain available.') +
+        '</div>' +
+        '<div class="zws-llm-toolbar">' +
+          '<button type="button" class="zws-action-link" data-zws-redraft-retry>Retry redraft</button>' +
         '</div>'
       );
     }
     if (st.status === 'failed') {
       return (
-        '<div class="zws-llm-error">' + escapeHtml(st.error || 'Redraft failed.') + '</div>' +
+        '<div class="zws-llm-incomplete" role="status">' +
+          escapeHtml(st.notice || 'This analysis is temporarily incomplete. You can retry when ready. Your evaluation verdict, findings, and evidence remain available.') +
+        '</div>' +
         '<div class="zws-llm-toolbar">' +
           '<button type="button" class="zws-action-link" data-zws-redraft-retry>Retry redraft</button>' +
         '</div>'
@@ -945,8 +986,8 @@
   }
 
   function resetLlmPanels() {
-    state.explain = { status: 'idle', enabled: false, error: null, elapsedSec: 0, data: null };
-    state.redraft = { status: 'idle', enabled: false, error: null, elapsedSec: 0, data: null, sourceContext: null };
+    state.explain = { status: 'idle', enabled: false, error: null, notice: null, elapsedSec: 0, data: null };
+    state.redraft = { status: 'idle', enabled: false, error: null, notice: null, elapsedSec: 0, data: null, sourceContext: null };
     state.documentRisk = null;
     if (state.llmEl) state.llmEl.innerHTML = '';
   }

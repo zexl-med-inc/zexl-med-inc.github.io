@@ -892,17 +892,30 @@ function clearRedraftPanels() {
   redraftResult = null;
 }
 
+var LLM_POLL_INTERVAL_MS = 2500;
+var LLM_POLL_MAX_WALL_S = 900;
+var LLM_DENSE_NOTICE_AFTER_S = 60;
+var LLM_DENSE_PROCESSING_MSG =
+  'This document contains a large number of findings. Detailed analysis may take several minutes. Your evaluation results remain available while processing continues.';
+var LLM_TEMPORARILY_INCOMPLETE_MSG =
+  'This analysis is temporarily incomplete. You can retry when ready. Your evaluation verdict, findings, and evidence remain available.';
+
 async function pollAsyncJob(statusPath, resultPath, panelId, errorId, onSuccess, onWorkspaceProgress) {
   const panel = document.getElementById(panelId);
   const errorEl = document.getElementById(errorId);
   const elapsedEl = panel.querySelector('.job-elapsed');
   errorEl.classList.add('hidden');
+  errorEl.textContent = '';
   panel.classList.remove('hidden');
   const start = Date.now();
-  for (let i = 0; i < 120; i++) {
+  const maxIterations = Math.ceil((LLM_POLL_MAX_WALL_S * 1000) / LLM_POLL_INTERVAL_MS);
+  for (let i = 0; i < maxIterations; i++) {
     const elapsedSec = Math.floor((Date.now() - start) / 1000);
     if (elapsedEl) elapsedEl.textContent = elapsedSec + 's elapsed';
-    if (typeof onWorkspaceProgress === 'function') onWorkspaceProgress(elapsedSec);
+    const notice = elapsedSec >= LLM_DENSE_NOTICE_AFTER_S ? LLM_DENSE_PROCESSING_MSG : null;
+    if (typeof onWorkspaceProgress === 'function') {
+      onWorkspaceProgress(elapsedSec, 'loading', notice);
+    }
     const sr = await fetch(API_BASE + statusPath, { headers: { 'X-API-Key': apiKey } });
     const st = await sr.json().catch(function() { return {}; });
     if (st.status === 'completed') {
@@ -913,32 +926,37 @@ async function pollAsyncJob(statusPath, resultPath, panelId, errorId, onSuccess,
         onSuccess(body);
         return;
       }
-      const errMsg = apiErrorDetail(body, 'Could not load job result.');
-      errorEl.textContent = errMsg;
+      // Do not surface technical/parser detail — treat as temporarily incomplete.
+      errorEl.textContent = LLM_TEMPORARILY_INCOMPLETE_MSG;
       errorEl.classList.remove('hidden');
-      if (typeof onWorkspaceProgress === 'function') onWorkspaceProgress(elapsedSec, 'failed', errMsg);
+      if (typeof onWorkspaceProgress === 'function') {
+        onWorkspaceProgress(elapsedSec, 'incomplete', LLM_TEMPORARILY_INCOMPLETE_MSG);
+      }
       return;
     }
     if (st.status === 'failed') {
       panel.classList.add('hidden');
-      const errMsg = st.error || 'Job failed. Please try again or contact hello@zexlmed.com';
-      errorEl.textContent = errMsg;
+      // Never expose raw job/parser error text during LLM wait path.
+      errorEl.textContent = LLM_TEMPORARILY_INCOMPLETE_MSG;
       errorEl.classList.remove('hidden');
-      if (typeof onWorkspaceProgress === 'function') onWorkspaceProgress(elapsedSec, 'failed', errMsg);
+      if (typeof onWorkspaceProgress === 'function') {
+        onWorkspaceProgress(elapsedSec, 'incomplete', LLM_TEMPORARILY_INCOMPLETE_MSG);
+      }
       return;
     }
-    await new Promise(function(r) { setTimeout(r, 2500); });
+    await new Promise(function(r) { setTimeout(r, LLM_POLL_INTERVAL_MS); });
   }
   panel.classList.add('hidden');
-  const timeoutMsg = 'Timed out waiting for the job to complete. Please try again.';
-  errorEl.textContent = timeoutMsg;
+  errorEl.textContent = LLM_TEMPORARILY_INCOMPLETE_MSG;
   errorEl.classList.remove('hidden');
-  if (typeof onWorkspaceProgress === 'function') onWorkspaceProgress(120 * 2.5, 'failed', timeoutMsg);
+  if (typeof onWorkspaceProgress === 'function') {
+    onWorkspaceProgress(LLM_POLL_MAX_WALL_S, 'incomplete', LLM_TEMPORARILY_INCOMPLETE_MSG);
+  }
 }
 
 function renderExplanations(data) {
   explanationResult = data;
-  WorkspaceShell.setExplainState({ status: 'completed', data: data, error: null });
+  WorkspaceShell.setExplainState({ status: 'completed', data: data, error: null, notice: null });
   const container = document.getElementById('explain-results');
   container.innerHTML = '';
   const items = data.explanations || [];
@@ -964,16 +982,26 @@ function renderExplanations(data) {
     const findingLabel = item.scope === 'document'
       ? 'Document-level'
       : (item.finding_id || 'finding');
+    var errorBlock = '';
+    if (item.error) {
+      errorBlock =
+        '<div class="llm-field"><div class="llm-field-label">Explanation unavailable</div>' +
+        '<div class="llm-field-body">' + escapeHtml(item.error) + '</div></div>' +
+        '<p style="font-size:0.8rem;color:var(--text-muted);margin:0.35rem 0 0.75rem;line-height:1.5">' +
+        'Finding verdict and evidence remain unchanged. Use Retry explanation above, or Expert Review.' +
+        '</p>';
+    }
     card.innerHTML =
       '<div class="llm-finding-head">' +
         '<span class="llm-finding-id">' + escapeHtml(findingLabel) + '</span>' +
         '<span class="verdict-badge v-' + escapeHtml(item.verdict || 'NOT_COMPLIANT') + '">' + escapeHtml(item.verdict || '') + '</span>' +
       '</div>' +
+      errorBlock +
       fieldHtml('A — Why', item.A_why) +
       fieldHtml('B — Evidence mapping', item.B_evidence_mapping) +
       fieldHtml('C — Regulatory interpretation', item.C_regulatory_interpretation) +
       fieldHtml('D — Practical recommendation', item.D_practical_recommendation) +
-      (conf.confidence_score != null
+      (conf.confidence_score != null && !item.error
         ? '<div class="llm-field"><div class="llm-field-label">E — Confidence</div><div class="llm-field-body">Score: ' +
           escapeHtml(String(conf.confidence_score)) + ' · Basis: ' + escapeHtml(conf.basis || '') +
           (conf.limitation ? '<br>Limitation: ' + escapeHtml(conf.limitation) : '') + '</div></div>'
@@ -991,7 +1019,7 @@ function fieldHtml(label, value) {
 
 function renderRedrafts(data) {
   redraftResult = data;
-  WorkspaceShell.setRedraftState({ status: 'completed', data: data, error: null });
+  WorkspaceShell.setRedraftState({ status: 'completed', data: data, error: null, notice: null });
   const container = document.getElementById('redraft-results');
   container.innerHTML = '';
   const items = data.redrafts || [];
@@ -1036,7 +1064,7 @@ async function startExplanation() {
   clearRedraftPanels();
   clearExplainPanels();
   WorkspaceShell.scrollToLlmPanel('explain');
-  WorkspaceShell.setExplainState({ status: 'loading', error: null, data: null, elapsedSec: 0 });
+  WorkspaceShell.setExplainState({ status: 'loading', error: null, notice: null, data: null, elapsedSec: 0 });
   try {
     const r = await fetch(API_BASE + '/explain', {
       method: 'POST',
@@ -1051,11 +1079,22 @@ async function startExplanation() {
         'explain-job-panel',
         'explain-error',
         renderExplanations,
-        function(elapsedSec, failStatus, errMsg) {
-          if (failStatus === 'failed') {
-            WorkspaceShell.setExplainState({ status: 'failed', error: errMsg, elapsedSec: elapsedSec });
+        function(elapsedSec, progressStatus, noticeMsg) {
+          if (progressStatus === 'incomplete') {
+            WorkspaceShell.setExplainState({
+              status: 'incomplete',
+              error: null,
+              notice: noticeMsg || LLM_TEMPORARILY_INCOMPLETE_MSG,
+              elapsedSec: elapsedSec,
+              data: null
+            });
           } else {
-            WorkspaceShell.setExplainState({ status: 'loading', elapsedSec: elapsedSec });
+            WorkspaceShell.setExplainState({
+              status: 'loading',
+              error: null,
+              notice: noticeMsg || null,
+              elapsedSec: elapsedSec
+            });
           }
         }
       );
@@ -1081,7 +1120,7 @@ async function startRedraft() {
   clearExplainPanels();
   clearRedraftPanels();
   WorkspaceShell.scrollToLlmPanel('redraft');
-  WorkspaceShell.setRedraftState({ status: 'loading', error: null, data: null, elapsedSec: 0 });
+  WorkspaceShell.setRedraftState({ status: 'loading', error: null, notice: null, data: null, elapsedSec: 0 });
   try {
     const r = await fetch(API_BASE + '/redraft', {
       method: 'POST',
@@ -1096,11 +1135,22 @@ async function startRedraft() {
         'redraft-job-panel',
         'redraft-error',
         renderRedrafts,
-        function(elapsedSec, failStatus, errMsg) {
-          if (failStatus === 'failed') {
-            WorkspaceShell.setRedraftState({ status: 'failed', error: errMsg, elapsedSec: elapsedSec });
+        function(elapsedSec, progressStatus, noticeMsg) {
+          if (progressStatus === 'incomplete') {
+            WorkspaceShell.setRedraftState({
+              status: 'incomplete',
+              error: null,
+              notice: noticeMsg || LLM_TEMPORARILY_INCOMPLETE_MSG,
+              elapsedSec: elapsedSec,
+              data: null
+            });
           } else {
-            WorkspaceShell.setRedraftState({ status: 'loading', elapsedSec: elapsedSec });
+            WorkspaceShell.setRedraftState({
+              status: 'loading',
+              error: null,
+              notice: noticeMsg || null,
+              elapsedSec: elapsedSec
+            });
           }
         }
       );
